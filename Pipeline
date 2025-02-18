@@ -1,0 +1,35 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                echo 'Git Checkout'
+                git credentialsId: 'Git-credential', url: 'https://github.com/hamzakalech/Devops_CD.git'
+            }
+        }
+        stage('Deployment') {
+            steps {
+                echo 'Deploying App to AKS'
+                withKubeConfig(caCertificate: '', clusterName: 'fsdfsdf', contextName: '', credentialsId: 'k8', namespace: 'jdhfgsjkd', restrictKubeConfigAccess: false, serverUrl: 'https://qsdhyghsu') {
+                        sh " kubectl apply -f Manifests/manifest.yaml -n hamzaDevOps"
+                        sh " kubectl apply -f Manifests/hpa.yaml -n hamzaDevOps"
+                        sh " kubectl apply -f Manifests/ci.yaml -n hamzaDevOps"
+                        sh " kubectl apply -f Manifests/ingress.yaml -n hamzaDevOps"
+                        sleep 30
+                }
+            }
+        }
+        stage('Deployment Verification') {
+            steps {
+                echo 'Deployment Verification'
+                withKubeConfig(caCertificate: '', clusterName: 'fsdfsdf', contextName: '', credentialsId: 'k8', namespace: 'jdhfgsjkd', restrictKubeConfigAccess: false, serverUrl: 'https://qsdhyghsu') {
+                        sh " kubectl get pods -n hamzaDevOps"
+                        sh " kubectl get svc -n hamzaDevOps"
+                        sh " kubectl get pv"
+                        sh " kubectl get ingress -n hamzaDevOps"
+                }
+            }
+        }
+    }
+}
