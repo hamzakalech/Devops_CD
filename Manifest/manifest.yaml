@@ -1,0 +1,251 @@
+---
+# Secrets for MySQL
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: hamzaDevOps
+type: Opaque
+data:
+  MYSQL_ROOT_PASSWORD: UEAkc1cwcmQxMjM=  # Example: Base64 encoded "P@$sW0rd123"
+
+---
+# ConfigMap for MySQL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-config
+  namespace: hamzaDevOps
+data:
+  MYSQL_DATABASE: "pieventdb"
+
+---
+# Storage Class for Azure Disk - Cost-optimized
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: azure-disk-standard
+provisioner: disk.csi.azure.com
+parameters:
+  storageAccountType: Standard_LRS # More cost-effective than Premium_LRS
+  kind: Managed
+reclaimPolicy: Delete # Changed to Delete for cost savings (deletes PV when PVC is deleted)
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# Persistent Volume Claim for MySQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: hamzaDevOps
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: azure-disk-standard
+  resources:
+    requests:
+      storage: 1Gi # Reduced to 1GB as requested
+
+---
+# MySQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: hamzaDevOps
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - image: mysql:8
+          name: mysql
+          resources:
+            requests:
+              memory: "256Mi" # Reduced from 512Mi
+              cpu: "250m"     # Reduced from 500m
+            limits:
+              memory: "512Mi" # Reduced from 1Gi
+              cpu: "500m"     # Reduced from 1
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: mysql-config
+                  key: MYSQL_DATABASE
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-data
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+
+---
+# MySQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: hamzaDevOps
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+
+---
+# PiEvent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pievent
+  namespace: hamzaDevOps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pievent
+  template:
+    metadata:
+      labels:
+        app: pievent
+    spec:
+      containers:
+        - name: pievent
+          image: hamzakalech/pi-event:v13
+          resources:
+            requests:
+              memory: "128Mi" # Reduced from 256Mi
+              cpu: "100m"     # Reduced from 250m
+            limits:
+              memory: "256Mi" # Reduced from 512Mi
+              cpu: "250m"     # Reduced from 500m
+          ports:
+            - containerPort: 8083
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-service:3306/pieventdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+---
+# PiEvent Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pievent-service
+  namespace: hamzaDevOps
+spec:
+  type: LoadBalancer  # Using LoadBalancer for Azure
+  ports:
+    - port: 80
+      targetPort: 8083
+  selector:
+    app: pievent
+
+---
+# Angular Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: angular-app
+  namespace: hamzaDevOps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: angular-app
+  template:
+    metadata:
+      labels:
+        app: angular-app
+    spec:
+      containers:
+        - name: angular-app
+          image: hamzakalech/my-angular-app:1.0
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+---
+# Angular Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: angular-service
+  namespace: hamzaDevOps
+spec:
+  type: LoadBalancer  # Exposing the Angular app
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: angular-app
+
