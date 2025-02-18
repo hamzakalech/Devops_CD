@@ -4,7 +4,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: mysql-secret
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 type: Opaque
 data:
   MYSQL_ROOT_PASSWORD: UEAkc1cwcmQxMjM=  # Example: Base64 encoded "P@$sW0rd123"
@@ -15,7 +15,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mysql-config
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 data:
   MYSQL_DATABASE: "pieventdb"
 
@@ -38,7 +38,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mysql-pvc
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 spec:
   accessModes:
     - ReadWriteOnce
@@ -53,7 +53,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mysql
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 spec:
   selector:
     matchLabels:
@@ -113,7 +113,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mysql-service
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 spec:
   ports:
     - port: 3306
@@ -127,7 +127,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pievent
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 spec:
   replicas: 1
   selector:
@@ -183,7 +183,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pievent-service
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 spec:
   type: LoadBalancer  # Using LoadBalancer for Azure
   ports:
@@ -198,7 +198,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: angular-app
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 spec:
   replicas: 1
   selector:
@@ -240,7 +240,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: angular-service
-  namespace: hamzaDevOps
+  namespace: hamzadevops
 spec:
   type: LoadBalancer  # Exposing the Angular app
   ports:
