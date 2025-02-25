@@ -212,7 +212,8 @@ spec:
     spec:
       containers:
         - name: angular-app
-          image: hamzakalech/my-angular-app:1.0
+          image: hamzakalech/my-angular-app:2.0
+
           ports:
             - containerPort: 80
           resources:
