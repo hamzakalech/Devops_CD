@@ -140,7 +140,7 @@ spec:
     spec:
       containers:
         - name: pievent
-          image: hamzakalech/pi-event:v20
+          image: hamzakalech/pi-event:v22
           imagePullPolicy: Always
           resources:
             requests:
