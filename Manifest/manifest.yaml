@@ -141,6 +141,7 @@ spec:
       containers:
         - name: pievent
           image: hamzakalech/pi-event:v19
+          imagePullPolicy: Always
           resources:
             requests:
               memory: "128Mi" # Reduced from 256Mi
