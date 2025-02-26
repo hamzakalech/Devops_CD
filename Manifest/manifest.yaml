@@ -272,7 +272,7 @@ spec:
           service:
             name: pievent-service
             port:
-              number: 8083
+              number: 80
       - path: /()(.*)
         pathType: ImplementationSpecific
         backend:
