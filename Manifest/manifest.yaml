@@ -212,7 +212,7 @@ spec:
     spec:
       containers:
         - name: angular-app
-          image: hamzakalech/my-angular-app:2.0
+          image: hamzakalech/my-angular-app:3.0
 
           ports:
             - containerPort: 80
