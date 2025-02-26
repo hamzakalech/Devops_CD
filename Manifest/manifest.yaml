@@ -165,7 +165,7 @@ spec:
             httpGet:
               path: /api/actuator/health/liveness
               port: 8083
-            initialDelaySeconds: 60
+            initialDelaySeconds: 90
             timeoutSeconds: 5
             periodSeconds: 10
             failureThreshold: 3
@@ -173,7 +173,7 @@ spec:
             httpGet:
               path: /api/actuator/health/readiness
               port: 8083
-            initialDelaySeconds: 60
+            initialDelaySeconds: 90
             timeoutSeconds: 5
             periodSeconds: 10
             failureThreshold: 3
