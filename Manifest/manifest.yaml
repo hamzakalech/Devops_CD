@@ -20,7 +20,7 @@ data:
   MYSQL_DATABASE: "pieventdb"
 
 ---
-# Storage Class for Azure Disk - Cost-optimized
+# Storage Class for Azure Disk 
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -45,7 +45,7 @@ spec:
   storageClassName: azure-disk-standard
   resources:
     requests:
-      storage: 1Gi # Reduced to 1GB as requested
+      storage: 1Gi 
 
 ---
 # MySQL Deployment
@@ -70,11 +70,11 @@ spec:
           name: mysql
           resources:
             requests:
-              memory: "256Mi" # Reduced from 512Mi
-              cpu: "250m"     # Reduced from 500m
+              memory: "256Mi" 
+              cpu: "250m"     
             limits:
-              memory: "512Mi" # Reduced from 1Gi
-              cpu: "500m"     # Reduced from 1
+              memory: "512Mi" 
+              cpu: "500m"     
           env:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
@@ -144,11 +144,11 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
-              memory: "128Mi" # Reduced from 256Mi
-              cpu: "100m"     # Reduced from 250m
+              memory: "128Mi" 
+              cpu: "100m"     
             limits:
-              memory: "256Mi" # Reduced from 512Mi
-              cpu: "250m"     # Reduced from 500m
+              memory: "256Mi" 
+              cpu: "250m"     
           ports:
             - containerPort: 8083
           env:
@@ -261,19 +261,19 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$1
 spec:
-  ingressClassName: nginx  # Use this instead of the annotation
+  ingressClassName: nginx  
   rules:
   - http:
       paths:
       - path: /api/(.*)
-        pathType: ImplementationSpecific  # Changed from Prefix
+        pathType: ImplementationSpecific  
         backend:
           service:
             name: pievent-service
             port:
               number: 80
       - path: /(.*)
-        pathType: ImplementationSpecific  # Changed from Prefix
+        pathType: ImplementationSpecific  
         backend:
           service:
             name: angular-service
