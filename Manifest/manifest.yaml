@@ -259,21 +259,22 @@ metadata:
   name: pievent-ingress
   namespace: hamzadevops
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
-  ingressClassName: nginx  
+  ingressClassName: nginx
   rules:
   - http:
       paths:
-      - path: /api/(.*)
-        pathType: ImplementationSpecific  
+      - path: /api(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: pievent-service
             port:
               number: 80
-      - path: /(.*)
-        pathType: ImplementationSpecific  
+      - path: /()(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: angular-service
