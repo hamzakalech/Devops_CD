@@ -163,7 +163,7 @@ spec:
                   key: MYSQL_ROOT_PASSWORD
           livenessProbe:
             httpGet:
-              path: /api/actuator/health/livenes
+              path: /api/actuator/health/liveness
               port: 8083
             initialDelaySeconds: 60
             timeoutSeconds: 5
