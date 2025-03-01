@@ -1,43 +1,30 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">=3.0"
-    }
-  }
-  required_version = ">= 1.3.0"
-}
-
 provider "azurerm" {
   features {}
 }
 
-# Create Resource Group
-resource "azurerm_resource_group" "hamza_rg" {
+# 1. Create a Resource Group
+resource "azurerm_resource_group" "rg" {
   name     = "hamza-resources"
   location = "East US"
 }
 
-# Select the best VM size among the given options
-# Terraform will automatically choose the first available one
-variable "vm_sizes" {
-  default = ["Standard_B2pls_v2", "Standard_B2als_v2", "Standard_B2ls_v2"]
-}
-
-# Deploy AKS Cluster
-resource "azurerm_kubernetes_cluster" "hamza_aks" {
+# 2. Create the AKS Cluster
+resource "azurerm_kubernetes_cluster" "aks" {
   name                = "hamzaDevOps"
-  location            = azurerm_resource_group.hamza_rg.location
-  resource_group_name = azurerm_resource_group.hamza_rg.name
-  dns_prefix          = "hamza-aks"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  dns_prefix          = "hamzaDevOps"
+
+  kubernetes_version  = "1.28" # Change to the latest available if needed
 
   default_node_pool {
-    name       = "default"
-    node_count = 1
-    vm_size    = element(var.vm_sizes, 0) # Picks the first available VM from the list
-    os_disk_size_gb = 30
+    name                = "systempool"
+    node_count          = 1
     enable_auto_scaling = false
-    type = "VirtualMachineScaleSets"
+    vm_size             = "Standard_B2als_v2" # Will be updated dynamically
+    os_disk_size_gb     = 16
+    os_sku              = "Ubuntu"
+    vnet_subnet_id      = azurerm_subnet.aks_subnet.id
   }
 
   identity {
@@ -52,18 +39,22 @@ resource "azurerm_kubernetes_cluster" "hamza_aks" {
 
   role_based_access_control_enabled = true
 
-  tags = {
-    environment = "dev"
-    owner       = "hamza"
+  api_server_access_profile {
+    enable_private_cluster = false
   }
 }
 
-# Output the cluster details
-output "kube_config" {
-  value     = azurerm_kubernetes_cluster.hamza_aks.kube_config_raw
-  sensitive = true
+# 3. Create Virtual Network (if needed)
+resource "azurerm_virtual_network" "vnet" {
+  name                = "aks-vnet"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  address_space       = ["10.0.0.0/16"]
 }
 
-output "aks_cluster_name" {
-  value = azurerm_kubernetes_cluster.hamza_aks.name
+resource "azurerm_subnet" "aks_subnet" {
+  name                 = "aks-subnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.0.1.0/24"]
 }
