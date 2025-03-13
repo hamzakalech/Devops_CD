@@ -58,18 +58,19 @@ resource "azurerm_kubernetes_cluster" "aks" {
   dns_prefix          = var.cluster_name
   kubernetes_version  = var.kubernetes_version
 
-  # System node pool configuration
   default_node_pool {
-    name                = "agentpool"
-    vm_size             = "Standard_B2als_v2"
-    node_count          = 1
-    # Auto-scaling settings should work in this version
-    enable_auto_scaling = true
-    min_count           = 1
-    max_count           = 2
-    os_disk_size_gb     = 30
-    os_sku              = "Ubuntu"
-    vnet_subnet_id      = azurerm_subnet.aks_subnet.id
+    name            = "agentpool"
+    vm_size         = "Standard_B2als_v2"
+    node_count      = 1
+    os_disk_size_gb = 30
+    os_sku          = "Ubuntu"
+    vnet_subnet_id  = azurerm_subnet.aks_subnet.id
+
+    # Corrected auto-scaling block
+    scale_settings {
+      min_count = 1
+      max_count = 2
+    }
   }
 
   identity {
@@ -82,10 +83,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
     load_balancer_sku = "standard"
   }
 
-  # For AzureRM v4.x, use these flags
   role_based_access_control_enabled = true
+
   azure_active_directory_role_based_access_control {
-    managed = true
     azure_rbac_enabled = false
   }
 }
@@ -113,13 +113,13 @@ output "kube_config" {
 }
 
 output "host" {
-  value     = azurerm_kubernetes_cluster.aks.kube_config[0].host
-  sensitive = true
+  value       = azurerm_kubernetes_cluster.aks.kube_config[0].host
+  sensitive   = true
   description = "The Kubernetes server URL for remote access"
 }
 
 output "fqdn" {
-  value = azurerm_kubernetes_cluster.aks.fqdn
+  value       = azurerm_kubernetes_cluster.aks.fqdn
   description = "The FQDN of the AKS cluster's API server"
 }
 
