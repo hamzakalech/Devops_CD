@@ -116,6 +116,12 @@ output "kube_config" {
 output "host" {
   value     = azurerm_kubernetes_cluster.aks.kube_config[0].host
   sensitive = true
+  description = "The Kubernetes server URL for remote access"
+}
+
+output "fqdn" {
+  value = azurerm_kubernetes_cluster.aks.fqdn
+  description = "The FQDN of the AKS cluster's API server"
 }
 
 output "resource_group_name" {
