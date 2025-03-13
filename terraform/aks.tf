@@ -1,4 +1,3 @@
-# Variables for better flexibility
 variable "resource_group_name" {
   description = "Name of the resource group"
   default     = "hamza-resources"
@@ -50,7 +49,7 @@ resource "azurerm_subnet" "aks_subnet" {
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-# AKS Cluster with Cost-Optimized System Node Pool
+# System Node Pool
 resource "azurerm_kubernetes_cluster" "aks" {
   name                = var.cluster_name
   location            = azurerm_resource_group.rg.location
@@ -58,7 +57,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   dns_prefix          = var.cluster_name
   kubernetes_version  = var.kubernetes_version
 
-  # Using more cost-effective VM size for system pool
   default_node_pool {
     name                = "agentpool"
     vm_size             = "Standard_B2als_v2"
