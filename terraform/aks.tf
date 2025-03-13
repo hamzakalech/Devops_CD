@@ -1,57 +1,5 @@
-variable "resource_group_name" {
-  description = "Name of the resource group"
-  default     = "hamza-resources"
-}
-
-variable "location" {
-  description = "Azure region for resources"
-  default     = "East US"
-}
-
-variable "cluster_name" {
-  description = "Name of the AKS cluster"
-  default     = "hamzaDevOps"
-}
-
-variable "kubernetes_version" {
-  description = "Kubernetes version"
-  default     = "1.28"
-}
-
-# Provider configuration
-provider "azurerm" {
-  features {}
-}
-
-# Resource Group
-resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group_name
-  location = var.location
-  tags     = {
-    Environment = "Development"
-    ManagedBy   = "Terraform"
-  }
-}
-
-# Virtual Network
-resource "azurerm_virtual_network" "vnet" {
-  name                = "aks-vnet"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  address_space       = ["10.0.0.0/16"]
-}
-
-# Subnet for AKS
-resource "azurerm_subnet" "aks_subnet" {
-  name                 = "aks-subnet"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = ["10.0.1.0/24"]
-}
-
-# System Node Pool
-resource "azurerm_kubernetes_cluster" "aks" {
-  name                = var.cluster_name
+e
+  
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   dns_prefix          = var.cluster_name
