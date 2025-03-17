@@ -106,6 +106,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
     network_plugin    = "azure"
     network_policy    = "calico"
     load_balancer_sku = "standard"
+
+    service_cidr   = "10.0.2.0/24"
+    dns_service_ip = "10.0.2.10"
   }
 
   role_based_access_control_enabled = true
