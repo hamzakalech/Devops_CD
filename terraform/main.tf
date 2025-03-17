@@ -32,7 +32,7 @@ variable "cluster_name" {
 
 variable "kubernetes_version" {
   description = "Kubernetes version to run on AKS."
-  default     = "1.28.0"
+  default     = "1.30.9"
 }
 
 ###############################################################################
@@ -87,15 +87,15 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   # ✅ System Node Pool with Auto-scaling
   default_node_pool {
-    name                = "agentpool"
-    vm_size             = "Standard_B2als_v2"
-    os_disk_size_gb     = 30
-    os_sku              = "Ubuntu"
-    vnet_subnet_id      = azurerm_subnet.aks_subnet.id
+    name            = "agentpool"
+    vm_size         = "Standard_B2als_v2"
+    os_disk_size_gb = 30
+    os_sku          = "Ubuntu"
+    vnet_subnet_id  = azurerm_subnet.aks_subnet.id
 
-    enable_auto_scaling = true  # ✅ Auto-scaling is enabled
-    min_count           = 1      # ✅ Minimum 1 node
-    max_count           = 2      # ✅ Maximum 3 nodes
+    enable_auto_scaling = true # ✅ Auto-scaling is enabled
+    min_count           = 1    # ✅ Minimum 1 node
+    max_count           = 2    # ✅ Maximum 3 nodes
   }
 
   identity {
