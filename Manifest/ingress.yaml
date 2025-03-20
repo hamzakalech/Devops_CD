@@ -5,11 +5,15 @@ metadata:
   name: pievent-ingress
   namespace: hamzadevops
   annotations:
-    nginx.ingress.kubernetes.io/use-regex: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod  # Uses Let's Encrypt for SSL
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"  # Keep this from your old working config
 spec:
   ingressClassName: nginx
   rules:
-  - http:
+  - host: hamzakalech.chickenkiller.com
+    http:
       paths:
       - path: /api
         pathType: Prefix
@@ -25,3 +29,7 @@ spec:
             name: angular-service
             port:
               number: 80
+  tls:
+  - hosts:
+    - hamzakalech.chickenkiller.com
+    secretName: myapp-tls
