@@ -8,10 +8,11 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod  # Uses Let's Encrypt for SSL
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"  # Keep this from your old working config
 spec:
   ingressClassName: nginx
   rules:
-  - host: myapp.example.com  # Change to your domain
+  - host: myapp.example.com  # Change to your actual domain
     http:
       paths:
       - path: /api
@@ -30,5 +31,5 @@ spec:
               number: 80
   tls:
   - hosts:
-    - myapp.example.com  # Change to your domain
-    secretName: myapp-tls  # TLS Secret created by Let's Encrypt
+    - myapp.example.com  # Make sure this domain points to your cluster
+    secretName: myapp-tls  # Cert-Manager will create this secret automatically
