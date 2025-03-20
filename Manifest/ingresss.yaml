@@ -12,7 +12,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: myapp.example.com  # Change to your actual domain
+  - host: hamzakalech.chickenkiller.com
     http:
       paths:
       - path: /api
@@ -31,5 +31,5 @@ spec:
               number: 80
   tls:
   - hosts:
-    - myapp.example.com  # Make sure this domain points to your cluster
+    - hamzakalech.chickenkiller.com
     secretName: myapp-tls  # Cert-Manager will create this secret automatically
