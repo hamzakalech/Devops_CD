@@ -15,10 +15,15 @@ terraform {
   }
 }
 
+###############################################################################
+# Provider Configurations
+###############################################################################
+
 provider "azurerm" {
   features {}
 }
 
+# Kubernetes provider - dynamically configured from AKS outputs
 provider "kubernetes" {
   host                   = module.aks.kube_config_host
   client_certificate     = base64decode(module.aks.kube_config_client_certificate)
@@ -26,6 +31,7 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(module.aks.kube_config_cluster_ca_certificate)
 }
 
+# Helm provider - explicitly configured to use the same AKS connection details
 provider "helm" {
   kubernetes {
     host                   = module.aks.kube_config_host
@@ -35,7 +41,9 @@ provider "helm" {
   }
 }
 
+###############################################################################
 # Modules
+###############################################################################
 
 module "resource_group" {
   source              = "./modules/resource_group"
@@ -58,6 +66,7 @@ module "aks" {
   subnet_id           = module.network.subnet_id
 }
 
+# (Optional) Update kubeconfig using a null_resource
 resource "null_resource" "update_kubeconfig" {
   depends_on = [module.aks]
 
@@ -69,6 +78,7 @@ EOT
   }
 }
 
+# Monitoring module that deploys the helm chart for kube-prometheus-stack.
 module "monitoring" {
   source     = "./modules/monitoring"
   depends_on = [null_resource.update_kubeconfig]
@@ -76,3 +86,4 @@ module "monitoring" {
     helm = helm
   }
 }
+
