@@ -1,35 +1,49 @@
----
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: pievent-ingress
   namespace: hamzadevops
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod  # Uses Let's Encrypt for SSL
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/use-regex: "true"  # Keep this from your old working config
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
 spec:
   ingressClassName: nginx
+  tls:
+  - hosts:
+    - hamzakalech.chickenkiller.com
+    secretName: myapp-tls
   rules:
   - host: hamzakalech.chickenkiller.com
     http:
       paths:
-      - path: /api
+      - path: /api(/|$)(.*)
         pathType: Prefix
         backend:
           service:
             name: pievent-service
             port:
               number: 8083
-      - path: /
+      - path: /grafana(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: monitoring-grafana
+            port:
+              number: 80
+      - path: /prometheus(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: monitoring-kube-prometheus-prometheus
+            port:
+              number: 9090
+      - path: /()(.*)
         pathType: Prefix
         backend:
           service:
             name: angular-service
             port:
               number: 80
-  tls:
-  - hosts:
-    - hamzakalech.chickenkiller.com
-    secretName: myapp-tls
