@@ -1,6 +1,19 @@
 alertmanager:
   enabled: false
 
+grafana:
+  enabled: true
+  adminUser: kalech
+  adminPassword: grafana
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://hamzakalech.chickenkiller.com/grafana/"
+      serve_from_sub_path: true
+
 prometheus:
   prometheusSpec:
     service:
@@ -8,30 +21,19 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: azure-disk-standard 
+          storageClassName: azure-disk-standard
           accessModes:
             - ReadWriteOnce
           resources:
             requests:
               storage: 1Gi
-
-grafana:
-  enabled: true
-  service:
-    type: LoadBalancer
-  adminUser: kalech
-  adminPassword: grafana
+    externalUrl: "https://hamzakalech.chickenkiller.com/prometheus"
+    routePrefix: /prometheus
 
 nodeExporter:
   service:
-    type: LoadBalancer
+    type: ClusterIP
 
-additionalScrapeConfigs:
-  - job_name: node-exporter
-    static_configs:
-      - targets:
-          - node-exporter:9100
-  - job_name: kube-state-metrics
-    static_configs:
-      - targets:
-          - kube-state-metrics:8080
+kubeStateMetrics:
+  service:
+    type: ClusterIP
