@@ -2,10 +2,20 @@
 terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/.terraform/
+terraform/.terraform.lock.hcl
 
 # Ignore Terraform binary
 terraform/*.zip
 
+# Helm related files
+*.tgz
+charts/
+tmpcharts/
+release.yaml
+
+# OS generated files
+*.log
+.DS_Store
 # Optional: IDE or editor stuff
 *.log
 *.swp
