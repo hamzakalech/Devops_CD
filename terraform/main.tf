@@ -22,3 +22,7 @@ module "aks" {
   kubernetes_version  = var.kubernetes_version
   subnet_id           = module.network.subnet_id
 }
+
+module "monitoring" {
+  source = "./modules/monitoring"
+}
