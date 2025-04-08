@@ -1,0 +1,13 @@
+# Ignore Terraform state files
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform/
+
+# Ignore Terraform binary
+terraform/*.zip
+
+# Optional: IDE or editor stuff
+*.log
+*.swp
+.vscode/
+.idea/
