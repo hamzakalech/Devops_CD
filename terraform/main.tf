@@ -15,9 +15,7 @@ terraform {
   }
 }
 
-###############################################################################
 # Provider Configurations
-###############################################################################
 
 provider "azurerm" {
   features {}
@@ -41,9 +39,7 @@ provider "helm" {
   }
 }
 
-###############################################################################
 # Modules
-###############################################################################
 
 module "resource_group" {
   source              = "./modules/resource_group"
@@ -66,7 +62,7 @@ module "aks" {
   subnet_id           = module.network.subnet_id
 }
 
-# (Optional) Update kubeconfig using a null_resource
+# Update kubeconfig using a null_resource
 resource "null_resource" "update_kubeconfig" {
   depends_on = [module.aks]
 
@@ -87,3 +83,30 @@ module "monitoring" {
   }
 }
 
+
+resource "null_resource" "bootstrap" {
+  depends_on = [
+    module.aks,
+    module.monitoring
+  ]
+
+  provisioner "local-exec" {
+    command = <<EOT
+# Apply Jenkins RBAC
+kubectl apply -f modules/bootstrap/jenkins-serviceaccount.yaml
+kubectl apply -f modules/bootstrap/jenkins-role.yaml
+kubectl apply -f modules/bootstrap/jenkins-rolebinding.yaml
+kubectl apply -f modules/bootstrap/jenkins-clusterrole.yaml
+kubectl apply -f modules/bootstrap/jenkins-clusterrolebinding.yaml
+
+# Install Ingress Controller
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+# Install Cert-Manager
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+
+# Apply Jenkins Secret
+kubectl apply -f modules/bootstrap/secret.yaml -n hamzadevops
+EOT
+  }
+}
