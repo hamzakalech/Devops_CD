@@ -250,10 +250,9 @@ metadata:
   name: angular-service
   namespace: hamzadevops
 spec:
-  type: ClusterIP  
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 80
   selector:
     app: angular-app
-
