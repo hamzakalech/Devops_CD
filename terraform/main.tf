@@ -85,14 +85,12 @@ module "monitoring" {
 
 
 resource "null_resource" "bootstrap" {
-  depends_on = [
-    module.aks,
-    module.monitoring
-  ]
+  depends_on = [module.aks]
 
   provisioner "local-exec" {
     command = <<EOT
 # Apply Jenkins RBAC
+kubectl create namespace hamzadevops
 kubectl apply -f modules/bootstrap/jenkins-serviceaccount.yaml
 kubectl apply -f modules/bootstrap/jenkins-role.yaml
 kubectl apply -f modules/bootstrap/jenkins-rolebinding.yaml
