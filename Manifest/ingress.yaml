@@ -48,3 +48,34 @@ spec:
                 name: angular-service
                 port:
                   number: 80
+
+
+---
+
+# Ingress for ArgoCD
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  tls:
+    - hosts:
+        - argocd.hamzakalech.chickenkiller.com
+      secretName: argocd-tls
+  rules:
+    - host: argocd.hamzakalech.chickenkiller.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 443
