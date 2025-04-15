@@ -65,6 +65,8 @@ spec:
       labels:
         app: mysql
     spec:
+      nodeSelector:
+        agentpool: worker
       containers:
         - image: mysql:latest
           name: mysql
@@ -138,6 +140,8 @@ spec:
       labels:
         app: pievent
     spec:
+      nodeSelector:
+        agentpool: worker
       containers:
         - name: pievent
           image: hamzakalech/pi-event:v29
@@ -210,6 +214,8 @@ spec:
       labels:
         app: angular-app
     spec:
+      nodeSelector:
+        agentpool: worker
       containers:
         - name: angular-app
           image: hamzakalech/my-angular-app:3.0
