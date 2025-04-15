@@ -110,3 +110,17 @@ kubectl apply -f modules/bootstrap/secret.yaml -n hamzadevops
 EOT
   }
 }
+
+module "argocd" {
+  source     = "./modules/argocd"
+
+  depends_on = [
+    module.monitoring,
+    null_resource.bootstrap 
+  ]
+
+  providers = {
+    helm       = helm
+    kubernetes = kubernetes
+  }
+}
