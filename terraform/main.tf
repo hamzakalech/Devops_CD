@@ -89,8 +89,10 @@ resource "null_resource" "bootstrap" {
 
   provisioner "local-exec" {
     command = <<EOT
+
+# Create namespace if not exists
+kubectl apply -f modules/bootstrap/namespace.yaml
 # Apply Jenkins RBAC
-kubectl create namespace hamzadevops
 kubectl apply -f modules/bootstrap/jenkins-serviceaccount.yaml
 kubectl apply -f modules/bootstrap/jenkins-role.yaml
 kubectl apply -f modules/bootstrap/jenkins-rolebinding.yaml
