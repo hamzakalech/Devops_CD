@@ -1,4 +1,4 @@
-# Deny all ingress traffic by default
+# 1. Deny all ingress traffic by default
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -9,65 +9,7 @@ spec:
   policyTypes:
     - Ingress
 ---
-# Allow Angular to communicate with PiEvent on port 8083
-apiVersion: crd.projectcalico.org/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-angular-to-pievent
-  namespace: hamzadevops
-spec:
-  selector: app == 'pievent'
-  types:
-    - Ingress
-  ingress:
-    - action: Allow
-      protocol: TCP
-      source:
-        selector: app == 'angular-app'
-      destination:
-        ports:
-          - 8083
----
-# Allow PiEvent to access MySQL on port 3306
-apiVersion: crd.projectcalico.org/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-pievent-to-mysql
-  namespace: hamzadevops
-spec:
-  selector: app == 'mysql'
-  types:
-    - Ingress
-  ingress:
-    - action: Allow
-      protocol: TCP
-      source:
-        selector: app == 'pievent'
-      destination:
-        ports:
-          - 3306
----
-# Allow Prometheus to scrape PiEvent metrics (on port 8083)
-apiVersion: crd.projectcalico.org/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-prometheus-to-pievent
-  namespace: hamzadevops
-spec:
-  selector: app == 'pievent'
-  types:
-    - Ingress
-  ingress:
-    - action: Allow
-      protocol: TCP
-      source:
-        selector: app == 'prometheus'
-      destination:
-        ports:
-          - 8083
-
----
-# Allow Ingress NGINX to access Angular and PiEvent
+# 2. Allow Ingress NGINX to access Angular and PiEvent
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
@@ -86,4 +28,41 @@ spec:
         ports:
           - 80
           - 8083
-
+---
+# 3. Allow PiEvent to access MySQL on port 3306
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-pievent-to-mysql
+  namespace: hamzadevops
+spec:
+  selector: app == 'mysql'
+  types:
+    - Ingress
+  ingress:
+    - action: Allow
+      protocol: TCP
+      source:
+        selector: app == 'pievent'
+      destination:
+        ports:
+          - 3306
+---
+# 4. Allow Prometheus to scrape PiEvent metrics (on port 8083)
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-to-pievent
+  namespace: hamzadevops
+spec:
+  selector: app == 'pievent'
+  types:
+    - Ingress
+  ingress:
+    - action: Allow
+      protocol: TCP
+      source:
+        selector: app == 'prometheus'
+      destination:
+        ports:
+          - 8083
