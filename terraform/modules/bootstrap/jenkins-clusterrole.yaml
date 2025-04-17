@@ -7,17 +7,17 @@ rules:
   - apiGroups: [""]
     resources:
       - persistentvolumes
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
   # Permissions for storageclasses
   - apiGroups: ["storage.k8s.io"]
     resources:
       - storageclasses
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
   # Permissions for ClusterIssuer
   - apiGroups: ["cert-manager.io"]
     resources:
       - clusterissuers
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
