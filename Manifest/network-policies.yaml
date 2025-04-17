@@ -65,3 +65,26 @@ spec:
       destination:
         ports:
           - 8083
+
+---
+# Allow Ingress NGINX to access Angular and PiEvent
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-frontend-backend
+  namespace: hamzadevops
+spec:
+  selector: app in {"angular-app", "pievent"}
+  types:
+    - Ingress
+  ingress:
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: all()
+        selector: k8s-app == "ingress-nginx"
+      destination:
+        ports:
+          - 80
+          - 8083
+
