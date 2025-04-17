@@ -85,7 +85,10 @@ module "monitoring" {
 
 
 resource "null_resource" "bootstrap" {
-  depends_on = [module.aks]
+  depends_on = [
+    null_resource.update_kubeconfig,
+    module.monitoring
+  ]
 
   provisioner "local-exec" {
     command = <<EOT
