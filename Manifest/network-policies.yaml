@@ -81,8 +81,7 @@ spec:
     - action: Allow
       protocol: TCP
       source:
-        namespaceSelector: all()
-        selector: k8s-app == "ingress-nginx"
+        namespaceSelector: "projectcalico.org/name == 'ingress-nginx'"
       destination:
         ports:
           - 80
