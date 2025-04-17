@@ -1,4 +1,4 @@
-# 1. Deny all ingress traffic by default
+# Deny all ingress traffic by default
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -9,7 +9,7 @@ spec:
   policyTypes:
     - Ingress
 ---
-# 2. Allow Ingress NGINX to access Angular and PiEvent
+# Allow Ingress NGINX to access Angular and PiEvent
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
@@ -29,7 +29,7 @@ spec:
           - 80
           - 8083
 ---
-# 3. Allow PiEvent to access MySQL on port 3306
+# Allow PiEvent to access MySQL on port 3306
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
@@ -48,7 +48,7 @@ spec:
         ports:
           - 3306
 ---
-# 4. Allow Prometheus to scrape PiEvent metrics (on port 8083)
+# Allow Prometheus to scrape PiEvent metrics (on port 8083)
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
@@ -66,3 +66,19 @@ spec:
       destination:
         ports:
           - 8083
+---
+# allow-acme-solver.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-acme-solver
+  namespace: hamzadevops
+spec:
+  podSelector:
+    matchLabels:
+      acme.cert-manager.io/http01-solver: "true"
+  ingress:
+    - {}
+  policyTypes:
+    - Ingress
+
