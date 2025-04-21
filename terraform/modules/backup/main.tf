@@ -13,12 +13,23 @@ resource "azurerm_data_protection_backup_policy_disk" "daily_policy" {
 
   default_retention_rule {
     name     = "Default"
-    duration = "P15D"
+    duration = "P15D"  # 15-day retention
     priority = 1
+
     criteria {
       absolute_criteria = ["FirstOfDay"]
     }
   }
 
-  backup_repeating_time_intervals = ["R/2024-01-01T02:00:00Z/PT24H"]
+  trigger {
+    schedule {
+      hour      = 4
+      minute    = 0
+      time_zone = "UTC + 1"
+    }
+
+    criteria {
+      absolute_criteria = ["FirstOfDay"]
+    }
+  }
 }
