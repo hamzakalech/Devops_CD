@@ -83,6 +83,13 @@ module "monitoring" {
   }
 }
 
+# automated daily snapshots with 15-day retention for your MySQL PVC disk
+module "backup" {
+  source              = "./modules/backup"
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+}
+
 
 resource "null_resource" "bootstrap" {
   depends_on = [
@@ -127,3 +134,4 @@ module "argocd" {
     kubernetes = kubernetes
   }
 }
+
