@@ -11,20 +11,24 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - hamzakalech.chickenkiller.com
-      secretName: myapp-tls
+        - grafana.hamzakalech.com
+        - prometheus.hamzakalech.com
+      secretName: monitoring-tls
   rules:
-    - host: hamzakalech.chickenkiller.com
+    - host: grafana.hamzakalech.com
       http:
         paths:
-          - path: /grafana
+          - path: /
             pathType: Prefix
             backend:
               service:
                 name: monitoring-grafana
                 port:
                   number: 80
-          - path: /prometheus
+    - host: prometheus.hamzakalech.com
+      http:
+        paths:
+          - path: /
             pathType: Prefix
             backend:
               service:

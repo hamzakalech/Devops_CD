@@ -11,10 +11,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - hamzakalech.chickenkiller.com
+        - hamzakalech.com
       secretName: myapp-tls
   rules:
-    - host: hamzakalech.chickenkiller.com
+    - host: hamzakalech.com
       http:
         paths:
           - path: /api

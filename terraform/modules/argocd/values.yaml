@@ -7,8 +7,8 @@ server:
       nginx.ingress.kubernetes.io/ssl-redirect: "true"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     hosts:
-      - argocd.hamzakalech.chickenkiller.com
+      - argocd.hamzakalech.com
     tls:
       - secretName: argocd-tls
         hosts:
-          - argocd.hamzakalech.chickenkiller.com
+          - argocd.hamzakalech.com
