@@ -8,28 +8,17 @@ resource "azurerm_data_protection_backup_vault" "mysql_backup_vault" {
 
 resource "azurerm_data_protection_backup_policy_disk" "daily_policy" {
   name                = "dailyMySQLBackupPolicy"
-  vault_name          = azurerm_data_protection_backup_vault.mysql_backup_vault.name
-  resource_group_name = var.resource_group_name
-
-  default_retention_rule {
-    name     = "Default"
-    duration = "P15D"  # 15-day retention
-    priority = 1
-
-    criteria {
-      absolute_criteria = ["FirstOfDay"]
-    }
-  }
-
-  trigger {
-    schedule {
-      hour      = 4
-      minute    = 0
-      time_zone = "UTC + 1"
-    }
-
-    criteria {
-      absolute_criteria = ["FirstOfDay"]
-    }
-  }
+  vault_id            = azurerm_data_protection_backup_vault.mysql_backup_vault.id
+  default_retention_duration = "P15D"
+  backup_repeating_time_intervals = ["R/2024-01-01T03:00:00Z/PT24H"] # adjust as needed
 }
+
+resource "azurerm_data_protection_backup_instance_disk" "mysql_instance" {
+  name                           = "mysql-disk-backup"
+  location                       = var.location
+  vault_id                       = azurerm_data_protection_backup_vault.mysql_backup_vault.id
+  snapshot_resource_group_name   = "MC_HAMZA-RESOURCES_HAMZADEVOPS_EASTUS"  # The disk's resource group
+  disk_id                        = var.mysql_disk_id
+  backup_policy_id               = azurerm_data_protection_backup_policy_disk.daily_policy.id
+}
+
