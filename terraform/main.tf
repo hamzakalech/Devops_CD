@@ -84,11 +84,16 @@ module "monitoring" {
 }
 
 # automated daily snapshots with 15-day retention for your MySQL PVC disk
-module "backup" {
-  source              = "./modules/backup"
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  mysql_disk_id       = "/subscriptions/6126c082-d56e-4f42-8033-834a1072516c/resourceGroups/MC_HAMZA-RESOURCES_HAMZADEVOPS_EASTUS/providers/Microsoft.Compute/disks/pvc-8c1eacc9-4313-4f8d-88f5-a9073ef0bcd4"
+module "velero" {
+  source = "./modules/velero"
+
+  resource_group_name         = module.resource_group.name
+  location                    = module.resource_group.location
+
+  kube_host                   = module.aks.kube_config_host
+  kube_client_certificate     = module.aks.kube_config_client_certificate
+  kube_client_key             = module.aks.kube_config_client_key
+  kube_cluster_ca_certificate = module.aks.cluster_ca_certificate
 }
 
 
