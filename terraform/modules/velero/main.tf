@@ -31,7 +31,7 @@ resource "azurerm_storage_account" "velero" {
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  kind                     = "StorageV2"
+  account_kind             = "StorageV2"
 }
 
 resource "azurerm_storage_container" "velero" {
@@ -40,18 +40,12 @@ resource "azurerm_storage_container" "velero" {
   container_access_type = "private"
 }
 
-resource "azurerm_ad_application" "velero" {
+resource "azuread_application" "velero" {
   display_name = "velero-app"
 }
 
-resource "azurerm_ad_service_principal" "velero" {
-  application_id = azurerm_ad_application.velero.application_id
-}
-
-resource "azurerm_ad_service_principal_password" "velero" {
-  service_principal_id = azurerm_ad_service_principal.velero.id
-  value                = random_password.velero.result
-  end_date             = "2099-12-31T23:59:59Z"
+resource "azuread_service_principal" "velero" {
+  client_id = azuread_application.velero.client_id
 }
 
 resource "random_password" "velero" {
@@ -59,10 +53,15 @@ resource "random_password" "velero" {
   special = true
 }
 
+resource "azuread_service_principal_password" "velero" {
+  service_principal_id = azuread_service_principal.velero.id
+  end_date             = "2099-12-31T23:59:59Z"
+}
+
 resource "azurerm_role_assignment" "velero" {
   scope                = azurerm_storage_account.velero.id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_ad_service_principal.velero.id
+  principal_id         = azuread_service_principal.velero.id
 }
 
 resource "helm_release" "velero" {
@@ -75,7 +74,7 @@ resource "helm_release" "velero" {
   set {
     name  = "credentials.secretContents.cloud"
     value = <<EOT
-{"clientId":"${azurerm_ad_application.velero.application_id}","clientSecret":"${azurerm_ad_service_principal_password.velero.value}","tenantId":"${data.azurerm_client_config.current.tenant_id}","subscriptionId":"${data.azurerm_client_config.current.subscription_id}"}
+{"clientId":"${azuread_application.velero.client_id}","clientSecret":"${random_password.velero.result}","tenantId":"${data.azurerm_client_config.current.tenant_id}","subscriptionId":"${data.azurerm_client_config.current.subscription_id}"}
 EOT
   }
 
@@ -110,10 +109,8 @@ EOT
   }
 
   depends_on = [
-    azurerm_role_assignment.velero, 
-    null_resource.update_kubeconfig
+    azurerm_role_assignment.velero
   ]
 }
 
-# Data block to get tenant and subscription IDs
 data "azurerm_client_config" "current" {}

@@ -1,5 +1,9 @@
 terraform {
   required_providers {
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.47"
+    }
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 3.0"
@@ -93,7 +97,7 @@ module "velero" {
   kube_host                   = module.aks.kube_config_host
   kube_client_certificate     = module.aks.kube_config_client_certificate
   kube_client_key             = module.aks.kube_config_client_key
-  kube_cluster_ca_certificate = module.aks.cluster_ca_certificate
+  kube_cluster_ca_certificate = module.aks.kube_config_cluster_ca_certificate
 }
 
 
