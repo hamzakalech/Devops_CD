@@ -3,6 +3,7 @@ terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/.terraform/
 terraform/.terraform.lock.hcl
+terraform/velero-v1.12.4-linux-amd64/
 
 # Ignore Terraform binary
 terraform/*.zip
