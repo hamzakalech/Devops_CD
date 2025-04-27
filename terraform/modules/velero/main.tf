@@ -1,4 +1,4 @@
-# Velero Terraform Setup for AKS + Azure Blob
+# Velero Terraform Setup for AKS + Azure Blob (Using Access Key Instead of Azure AD)
 
 provider "azurerm" {
   features {}
@@ -40,28 +40,10 @@ resource "azurerm_storage_container" "velero" {
   container_access_type = "private"
 }
 
-resource "azuread_application" "velero" {
-  display_name = "velero-app"
-}
-
-resource "azuread_service_principal" "velero" {
-  client_id = azuread_application.velero.client_id
-}
-
-resource "random_password" "velero" {
-  length  = 32
-  special = true
-}
-
-resource "azuread_service_principal_password" "velero" {
-  service_principal_id = azuread_service_principal.velero.id
-  end_date             = "2099-12-31T23:59:59Z"
-}
-
-resource "azurerm_role_assignment" "velero" {
-  scope                = azurerm_storage_account.velero.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azuread_service_principal.velero.id
+output "velero_storage_key" {
+  description = "Primary access key for Velero backup storage"
+  value       = azurerm_storage_account.velero.primary_access_key
+  sensitive   = true
 }
 
 resource "helm_release" "velero" {
@@ -70,13 +52,8 @@ resource "helm_release" "velero" {
   chart      = "velero"
   namespace  = "velero"
   create_namespace = true
+  values           = [file("${path.module}/velero-values.yaml")]
 
-  set {
-    name  = "credentials.secretContents.cloud"
-    value = <<EOT
-{"clientId":"${azuread_application.velero.client_id}","clientSecret":"${random_password.velero.result}","tenantId":"${data.azurerm_client_config.current.tenant_id}","subscriptionId":"${data.azurerm_client_config.current.subscription_id}"}
-EOT
-  }
 
   set {
     name  = "configuration.provider"
@@ -99,6 +76,31 @@ EOT
   }
 
   set {
+    name  = "configuration.volumeSnapshotLocation.name"
+    value = "default"
+  }
+
+  set {
+    name  = "configuration.volumeSnapshotLocation.config.resourceGroup"
+    value = var.resource_group_name
+  }
+
+  set {
+    name  = "configuration.volumeSnapshotLocation.config.subscriptionId"
+    value = data.azurerm_client_config.current.subscription_id
+  }
+
+  set {
+    name  = "configuration.volumeSnapshotLocation.config.apiTimeout"
+    value = "5m"
+  }
+
+  set {
+    name  = "snapshotsEnabled"
+    value = "true"
+  }
+
+  set {
     name  = "initContainers[0].name"
     value = "velero-plugin-for-microsoft-azure"
   }
@@ -107,10 +109,6 @@ EOT
     name  = "initContainers[0].image"
     value = "velero/velero-plugin-for-microsoft-azure:v1.7.0"
   }
-
-  depends_on = [
-    azurerm_role_assignment.velero
-  ]
 }
 
 data "azurerm_client_config" "current" {}
