@@ -2,7 +2,7 @@ credentials:
   secretContents:
     cloud: |
       AZURE_STORAGE_ACCOUNT_ACCESS_KEY: <your-storage-account-access-key>
-      AZURE_STORAGE_ACCOUNT_NAME: <your-storage-account-name>
+      AZURE_STORAGE_ACCOUNT_NAME: velerobackup96103
 
 configuration:
   backupStorageLocation:
@@ -11,7 +11,7 @@ configuration:
       bucket: velero
       config:
         resourceGroup: hamza-resources
-        storageAccount: <your-storage-account-name>
+        storageAccount: velerobackup96103
 
   volumeSnapshotLocation:
     - name: default

@@ -56,46 +56,6 @@ resource "helm_release" "velero" {
 
 
   set {
-    name  = "configuration.provider"
-    value = "azure"
-  }
-
-  set {
-    name  = "configuration.backupStorageLocation.bucket"
-    value = azurerm_storage_container.velero.name
-  }
-
-  set {
-    name  = "configuration.backupStorageLocation.config.resourceGroup"
-    value = var.resource_group_name
-  }
-
-  set {
-    name  = "configuration.backupStorageLocation.config.storageAccount"
-    value = azurerm_storage_account.velero.name
-  }
-
-  set {
-    name  = "configuration.volumeSnapshotLocation.name"
-    value = "default"
-  }
-
-  set {
-    name  = "configuration.volumeSnapshotLocation.config.resourceGroup"
-    value = var.resource_group_name
-  }
-
-  set {
-    name  = "configuration.volumeSnapshotLocation.config.subscriptionId"
-    value = data.azurerm_client_config.current.subscription_id
-  }
-
-  set {
-    name  = "configuration.volumeSnapshotLocation.config.apiTimeout"
-    value = "5m"
-  }
-
-  set {
     name  = "snapshotsEnabled"
     value = "true"
   }
