@@ -16,7 +16,7 @@ metadata:
   name: allow-ingress-to-frontend-backend
   namespace: hamzadevops
 spec:
-  selector: app in {"angular-app", "pievent"}
+  selector: app in {"angular-app", "eventmanagement"}
   types:
     - Ingress
   ingress:
@@ -33,7 +33,7 @@ spec:
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-pievent-to-mysql
+  name: allow-eventmanagement-to-mysql
   namespace: hamzadevops
 spec:
   selector: app == 'mysql'
@@ -43,7 +43,7 @@ spec:
     - action: Allow
       protocol: TCP
       source:
-        selector: app == 'pievent'
+        selector: app == 'eventmanagement'
       destination:
         ports:
           - 3306
@@ -52,10 +52,10 @@ spec:
 apiVersion: crd.projectcalico.org/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-prometheus-to-pievent
+  name: allow-prometheus-to-eventmanagement
   namespace: hamzadevops
 spec:
-  selector: app == 'pievent'
+  selector: app == 'eventmanagement'
   types:
     - Ingress
   ingress:

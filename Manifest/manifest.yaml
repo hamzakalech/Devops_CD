@@ -17,7 +17,7 @@ metadata:
   name: mysql-config
   namespace: hamzadevops
 data:
-  MYSQL_DATABASE: "pieventdb"
+  MYSQL_DATABASE: "eventdb"
 
 ---
 # Storage Class for Azure Disk 
@@ -45,7 +45,7 @@ spec:
   storageClassName: azure-disk-standard
   resources:
     requests:
-      storage: 1Gi 
+      storage: 1Gi
 
 ---
 # MySQL Deployment
@@ -128,23 +128,23 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pievent
+  name: eventmanagement
   namespace: hamzadevops
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: pievent
+      app: eventmanagement
   template:
     metadata:
       labels:
-        app: pievent
+        app: eventmanagement
     spec:
       nodeSelector:
         agentpool: worker
       containers:
-        - name: pievent
-          image: hamzakalech/pi-event:v29
+        - name: eventmanagement
+          image: hamzakalech/event-management:v29
           imagePullPolicy: Always
           resources:
             requests:
@@ -157,7 +157,7 @@ spec:
             - containerPort: 8083
           env:
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:mysql://mysql-service:3306/pieventdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+              value: jdbc:mysql://mysql-service:3306/eventdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
             - name: SPRING_DATASOURCE_USERNAME
               value: root
             - name: SPRING_DATASOURCE_PASSWORD
@@ -187,7 +187,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: pievent-service
+  name: eventmanagement-service
   namespace: hamzadevops
 spec:
   type: ClusterIP 
@@ -195,7 +195,7 @@ spec:
     - port: 8083
       targetPort: 8083
   selector:
-    app: pievent
+    app: eventmanagement
 
 ---
 # Angular Frontend Deployment

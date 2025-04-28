@@ -21,7 +21,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: pievent-service
+                name: eventmanagement-service
                 port:
                   number: 8083
           - path: /

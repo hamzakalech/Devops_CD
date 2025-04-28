@@ -1,9 +1,8 @@
 credentials:
+  existingSecret: cloud-credentials
   useSecret: true
-  secretContents:
-    cloud: |
-      AZURE_STORAGE_ACCOUNT_ACCESS_KEY: 66s0msz8TYrubGX8ZMqV98+9df6yl6S+QiHmPeJ1xI0UVvKaQkHi5KeCQzb71W5Dto7f1LiFy/y5+AStXVsDng==
-      AZURE_STORAGE_ACCOUNT_NAME: velerobackup96103
+  name: cloud-credentials
+  key: cloud
 
 configuration:
   backupStorageLocation:
@@ -12,9 +11,8 @@ configuration:
       bucket: velero
       config:
         resourceGroup: hamza-resources
-        storageAccount: velerobackup96103
-        useAAD: "false"
-        useManagedIdentity: "false"
+        storageAccount: velerobackup45298
+        storageAccountKeyEnvVar: AZURE_STORAGE_ACCOUNT_ACCESS_KEY
 
   volumeSnapshotLocation:
     - name: default
@@ -28,3 +26,11 @@ initContainers:
     volumeMounts:
       - mountPath: /target
         name: plugins
+
+
+env:
+  - name: AZURE_SUBSCRIPTION_ID
+    value: 6126c082-d56e-4f42-8033-834a1072516c
+  - name: AZURE_RESOURCE_GROUP
+    value: hamza-resources
+
