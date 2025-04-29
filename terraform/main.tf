@@ -98,6 +98,8 @@ module "velero" {
   kube_client_certificate     = module.aks.kube_config_client_certificate
   kube_client_key             = module.aks.kube_config_client_key
   kube_cluster_ca_certificate = module.aks.kube_config_cluster_ca_certificate
+
+  depends_on = [null_resource.update_kubeconfig]
 }
 
 

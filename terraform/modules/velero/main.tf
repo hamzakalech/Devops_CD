@@ -20,13 +20,9 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(var.kube_cluster_ca_certificate)
 }
 
-resource "random_integer" "suffix" {
-  min = 10000
-  max = 99999
-}
 
 resource "azurerm_storage_account" "velero" {
-  name                     = "velerobackup${random_integer.suffix.result}"
+  name                     = "velerobackupkalech"
   resource_group_name      = var.resource_group_name
   location                 = var.location
   account_tier             = "Standard"
@@ -70,5 +66,19 @@ resource "helm_release" "velero" {
     value = "velero/velero-plugin-for-microsoft-azure:v1.7.0"
   }
 }
+
+resource "kubernetes_secret" "velero_credentials" {
+  metadata {
+    name      = "cloud-credentials"
+    namespace = "velero"
+  }
+
+  data = {
+    cloud = file("${path.module}/credentials-velero")
+  }
+
+  type = "Opaque"
+}
+
 
 data "azurerm_client_config" "current" {}
