@@ -98,8 +98,13 @@ module "velero" {
   kube_client_certificate     = module.aks.kube_config_client_certificate
   kube_client_key             = module.aks.kube_config_client_key
   kube_cluster_ca_certificate = module.aks.kube_config_cluster_ca_certificate
+  kube_config_ready           = null_resource.update_kubeconfig
 
-  depends_on = [null_resource.update_kubeconfig]
+  providers = {
+    azurerm    = azurerm
+    helm       = helm
+    kubernetes = kubernetes
+  }
 }
 
 

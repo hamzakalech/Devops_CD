@@ -1,25 +1,18 @@
-# Velero Terraform Setup for AKS + Azure Blob (Using Access Key Instead of Azure AD)
-
-provider "azurerm" {
-  features {}
-}
-
-provider "helm" {
-  kubernetes {
-    host                   = var.kube_host
-    client_certificate     = base64decode(var.kube_client_certificate)
-    client_key             = base64decode(var.kube_client_key)
-    cluster_ca_certificate = base64decode(var.kube_cluster_ca_certificate)
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+    }
   }
 }
 
-provider "kubernetes" {
-  host                   = var.kube_host
-  client_certificate     = base64decode(var.kube_client_certificate)
-  client_key             = base64decode(var.kube_client_key)
-  cluster_ca_certificate = base64decode(var.kube_cluster_ca_certificate)
-}
-
+data "azurerm_client_config" "current" {}
 
 resource "azurerm_storage_account" "velero" {
   name                     = "velerobackupkalech"
@@ -36,20 +29,80 @@ resource "azurerm_storage_container" "velero" {
   container_access_type = "private"
 }
 
-output "velero_storage_key" {
-  description = "Primary access key for Velero backup storage"
-  value       = azurerm_storage_account.velero.primary_access_key
-  sensitive   = true
+resource "kubernetes_namespace" "velero" {
+  depends_on = [var.kube_config_ready]
+  metadata {
+    name = "velero"
+  }
+}
+
+resource "kubernetes_secret" "velero_credentials" {
+  depends_on = [kubernetes_namespace.velero]
+
+  metadata {
+    name      = "cloud-credentials"
+    namespace = kubernetes_namespace.velero.metadata[0].name
+  }
+
+  data = {
+    cloud = <<EOT
+AZURE_STORAGE_ACCOUNT_NAME=${azurerm_storage_account.velero.name}
+AZURE_STORAGE_ACCOUNT_ACCESS_KEY=${azurerm_storage_account.velero.primary_access_key}
+AZURE_CLOUD_NAME=AzurePublicCloud
+AZURE_RESOURCE_GROUP=${var.resource_group_name}
+AZURE_SUBSCRIPTION_ID=${data.azurerm_client_config.current.subscription_id}
+EOT
+  }
+
+  type = "Opaque"
 }
 
 resource "helm_release" "velero" {
-  name       = "velero"
-  repository = "https://vmware-tanzu.github.io/helm-charts"
-  chart      = "velero"
-  namespace  = "velero"
+  name             = "velero"
+  repository       = "https://vmware-tanzu.github.io/helm-charts"
+  chart            = "velero"
+  namespace        = "velero"
   create_namespace = true
-  values           = [file("${path.module}/velero-values.yaml")]
 
+  set {
+    name  = "configuration.backupStorageLocation[0].provider"
+    value = "azure"
+  }
+
+  set {
+    name  = "configuration.backupStorageLocation[0].bucket"
+    value = "velero"
+  }
+
+  set {
+    name  = "configuration.backupStorageLocation[0].config.resourceGroup"
+    value = var.resource_group_name
+  }
+
+  set {
+    name  = "configuration.backupStorageLocation[0].config.storageAccount"
+    value = azurerm_storage_account.velero.name
+  }
+
+  set {
+    name  = "configuration.backupStorageLocation[0].config.storageAccountKeyEnvVar"
+    value = "AZURE_STORAGE_ACCOUNT_ACCESS_KEY"
+  }
+
+  set {
+    name  = "configuration.volumeSnapshotLocation[0].provider"
+    value = "azure"
+  }
+
+  set {
+    name  = "configuration.volumeSnapshotLocation[0].config.resourceGroup"
+    value = var.resource_group_name
+  }
+
+  set {
+    name  = "credentials.existingSecret"
+    value = kubernetes_secret.velero_credentials.metadata[0].name
+  }
 
   set {
     name  = "snapshotsEnabled"
@@ -65,20 +118,17 @@ resource "helm_release" "velero" {
     name  = "initContainers[0].image"
     value = "velero/velero-plugin-for-microsoft-azure:v1.7.0"
   }
-}
 
-resource "kubernetes_secret" "velero_credentials" {
-  metadata {
-    name      = "cloud-credentials"
-    namespace = "velero"
+  set {
+    name  = "initContainers[0].volumeMounts[0].mountPath"
+    value = "/target"
   }
 
-  data = {
-    cloud = file("${path.module}/credentials-velero")
+  set {
+    name  = "initContainers[0].volumeMounts[0].name"
+    value = "plugins"
   }
 
-  type = "Opaque"
+  depends_on = [kubernetes_secret.velero_credentials]
 }
 
-
-data "azurerm_client_config" "current" {}

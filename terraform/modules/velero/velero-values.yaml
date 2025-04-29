@@ -11,7 +11,7 @@ configuration:
       bucket: velero
       config:
         resourceGroup: hamza-resources
-        storageAccount: velerobackup45298
+        storageAccount: velerobackupkalech
         storageAccountKeyEnvVar: AZURE_STORAGE_ACCOUNT_ACCESS_KEY
 
   volumeSnapshotLocation:
@@ -20,6 +20,8 @@ configuration:
       config:
         resourceGroup: hamza-resources
 
+snapshotsEnabled: true
+
 initContainers:
   - name: velero-plugin-for-microsoft-azure
     image: velero/velero-plugin-for-microsoft-azure:v1.7.0
@@ -27,10 +29,10 @@ initContainers:
       - mountPath: /target
         name: plugins
 
+extraVolumeMounts:
+  - name: plugins
+    mountPath: /plugins
 
-env:
-  - name: AZURE_SUBSCRIPTION_ID
-    value: 6126c082-d56e-4f42-8033-834a1072516c
-  - name: AZURE_RESOURCE_GROUP
-    value: hamza-resources
-
+extraVolumes:
+  - name: plugins
+    emptyDir: {}

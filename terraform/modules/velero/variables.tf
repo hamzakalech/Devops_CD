@@ -1,22 +1,32 @@
 variable "resource_group_name" {
-  description = "Resource group name where storage will be created"
   type        = string
+  description = "Resource group where Velero will store backups"
 }
 
 variable "location" {
-  description = "Azure region"
   type        = string
+  description = "Azure region"
 }
 
 variable "kube_host" {
   type = string
 }
+
 variable "kube_client_certificate" {
   type = string
 }
+
 variable "kube_client_key" {
   type = string
 }
+
 variable "kube_cluster_ca_certificate" {
   type = string
+}
+
+
+variable "kube_config_ready" {
+  description = "Dependency to wait for kubeconfig to be ready"
+  type        = any
+  default     = null
 }
