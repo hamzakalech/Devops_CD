@@ -18,7 +18,10 @@ configuration:
     - name: default
       provider: azure
       config:
-        resourceGroup: hamza-resources
+        resourceGroup: MC_hamza-resources_hamzaDevOps_eastus
+        subscriptionId: 6126c082-d56e-4f42-8033-834a1072516c
+        apiTimeout: 5m
+        incremental: true
 
 snapshotsEnabled: true
 
