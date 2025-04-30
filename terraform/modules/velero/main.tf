@@ -116,7 +116,7 @@ resource "helm_release" "velero" {
 
   set {
     name  = "initContainers[0].image"
-    value = "velero/velero-plugin-for-microsoft-azure:v1.7.0"
+    value = "velero/velero-plugin-for-microsoft-azure:v1.9.0"
   }
 
   set {

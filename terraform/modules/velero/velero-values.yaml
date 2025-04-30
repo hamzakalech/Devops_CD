@@ -30,17 +30,16 @@ initContainers:
   - name: velero-plugin-for-microsoft-azure
     image: velero/velero-plugin-for-microsoft-azure:v1.9.0
     volumeMounts:
-      - name: plugins          # <-- mount to copy **into**
+      - name: plugins
         mountPath: /target
 
 extraVolumeMounts:
-  - name: plugins              # <-- mount for the main velero container
+  - name: plugins
     mountPath: /plugins
 
 extraVolumes:
   - name: plugins
     emptyDir: {}
 
-# enable CSI snapshots (the server process reads it)
 env:
   VELERO_FEATURES: EnableCSI
