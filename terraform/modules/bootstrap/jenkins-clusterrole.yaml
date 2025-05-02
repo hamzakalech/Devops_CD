@@ -21,3 +21,8 @@ rules:
       - clusterissuers
     verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 
+  # Permissions for VolumeSnapshotClasses
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources:
+      - volumesnapshotclasses
+    verbs: ["get", "list", "watch", "create"]
