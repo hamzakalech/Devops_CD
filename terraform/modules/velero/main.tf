@@ -23,6 +23,14 @@ resource "azurerm_storage_account" "velero" {
   account_kind             = "StorageV2"
 }
 
+resource "azurerm_role_assignment" "velero_contributor" {
+  principal_id         = data.azurerm_client_config.current.object_id
+  role_definition_name = "Contributor"
+  scope                = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_name}"
+  
+  depends_on = [azurerm_storage_account.velero]
+}
+
 resource "azurerm_storage_container" "velero" {
   name                  = "velero"
   storage_account_name  = azurerm_storage_account.velero.name
@@ -63,6 +71,8 @@ resource "helm_release" "velero" {
   chart            = "velero"
   namespace        = "velero"
   create_namespace = true
+  
+  values = [file("${path.module}/velero-values.yaml")]
 
   set {
     name  = "configuration.backupStorageLocation[0].provider"
