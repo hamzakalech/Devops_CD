@@ -30,3 +30,8 @@ variable "kube_config_ready" {
   type        = any
   default     = null
 }
+
+variable "cluster_name" {
+  type        = string
+  description = "The name of the AKS cluster (used to compute the MC_* resource group name)"
+}

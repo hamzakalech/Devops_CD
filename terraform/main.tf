@@ -79,13 +79,13 @@ EOT
 }
 
 # Monitoring module that deploys the helm chart for kube-prometheus-stack.
-module "monitoring" {
-  source     = "./modules/monitoring"
-  depends_on = [null_resource.update_kubeconfig]
-  providers = {
-    helm = helm
-  }
-}
+#module "monitoring" {
+#  source     = "./modules/monitoring"
+#  depends_on = [null_resource.update_kubeconfig]
+#  providers = {
+#    helm = helm
+#  }
+#}
 
 # automated daily snapshots with 15-day retention for your MySQL PVC disk
 module "velero" {
@@ -99,6 +99,8 @@ module "velero" {
   kube_client_key             = module.aks.kube_config_client_key
   kube_cluster_ca_certificate = module.aks.kube_config_cluster_ca_certificate
   kube_config_ready           = null_resource.update_kubeconfig
+  
+  cluster_name                = var.cluster_name
 
   providers = {
     azurerm    = azurerm
@@ -138,17 +140,17 @@ EOT
   }
 }
 
-module "argocd" {
-  source     = "./modules/argocd"
-
-  depends_on = [
-    module.monitoring,
-    null_resource.bootstrap 
-  ]
-
-  providers = {
-    helm       = helm
-    kubernetes = kubernetes
-  }
-}
+#module "argocd" {
+#  source     = "./modules/argocd"
+#
+#  depends_on = [
+#    module.monitoring,
+#    null_resource.bootstrap 
+#  ]
+#
+#  providers = {
+#    helm       = helm
+#    kubernetes = kubernetes
+#  }
+#}
 

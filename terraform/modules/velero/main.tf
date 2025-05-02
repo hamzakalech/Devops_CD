@@ -31,6 +31,14 @@ resource "azurerm_role_assignment" "velero_contributor" {
   depends_on = [azurerm_storage_account.velero]
 }
 
+resource "azurerm_role_assignment" "velero_contributor_mc_rg" {
+  principal_id         = data.azurerm_client_config.current.object_id
+  role_definition_name = "Contributor"
+  scope                = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/MC_${var.resource_group_name}_${var.cluster_name}_${var.location}"
+
+  depends_on = [azurerm_storage_account.velero]
+}
+
 resource "azurerm_storage_container" "velero" {
   name                  = "velero"
   storage_account_name  = azurerm_storage_account.velero.name
@@ -119,25 +127,6 @@ resource "helm_release" "velero" {
     value = "true"
   }
 
-  set {
-    name  = "initContainers[0].name"
-    value = "velero-plugin-for-microsoft-azure"
-  }
-
-  set {
-    name  = "initContainers[0].image"
-    value = "velero/velero-plugin-for-microsoft-azure:v1.9.0"
-  }
-
-  set {
-    name  = "initContainers[0].volumeMounts[0].mountPath"
-    value = "/target"
-  }
-
-  set {
-    name  = "initContainers[0].volumeMounts[0].name"
-    value = "plugins"
-  }
 
   depends_on = [kubernetes_secret.velero_credentials]
 }

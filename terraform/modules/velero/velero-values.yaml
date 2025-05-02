@@ -33,13 +33,6 @@ initContainers:
       - name: plugins
         mountPath: /target
 
-extraVolumeMounts:
-  - name: plugins
-    mountPath: /plugins
-
-extraVolumes:
-  - name: plugins
-    emptyDir: {}
 
 env:
   VELERO_FEATURES: EnableCSI
