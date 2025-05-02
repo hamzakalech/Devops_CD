@@ -114,7 +114,7 @@ resource "null_resource" "bootstrap" {
   depends_on = [
     null_resource.update_kubeconfig,
     module.monitoring,
-    module.argocd
+    module.velero
   ]
 
   provisioner "local-exec" {
