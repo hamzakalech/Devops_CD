@@ -22,3 +22,5 @@ release.yaml
 *.swp
 .vscode/
 .idea/
+
+AI/prometheus_metrics.csv
