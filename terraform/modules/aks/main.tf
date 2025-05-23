@@ -13,7 +13,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     vnet_subnet_id      = var.subnet_id
     enable_auto_scaling = true
     min_count           = 1
-    max_count           = 2
+    max_count           = 3
   }
 
   identity {
@@ -42,5 +42,5 @@ resource "azurerm_kubernetes_cluster_node_pool" "worker" {
   mode                  = "User"
   enable_auto_scaling   = true
   min_count             = 1
-  max_count             = 2
+  max_count             = 6
 }

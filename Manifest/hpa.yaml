@@ -10,14 +10,14 @@ spec:
     kind: Deployment
     name: eventmanagement
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 150
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 80
+        averageUtilization: 65
 
 ---
 apiVersion: autoscaling/v2
@@ -31,11 +31,11 @@ spec:
     kind: Deployment
     name: angular-app
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 150
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 70
+        averageUtilization: 65

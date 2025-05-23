@@ -45,7 +45,7 @@ spec:
   storageClassName: azure-disk-standard
   resources:
     requests:
-      storage: 1Gi
+      storage: 5Gi
 
 ---
 # VolumeSnapshotClass for Azure Disk CSI
@@ -86,7 +86,7 @@ spec:
               memory: "256Mi" 
               cpu: "250m"     
             limits:
-              memory: "512Mi" 
+              memory: "1Gi" 
               cpu: "500m"     
           env:
             - name: MYSQL_ROOT_PASSWORD
