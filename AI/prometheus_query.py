@@ -8,7 +8,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 PROMETHEUS_URL = "https://prometheus.hamzakalech.com"
 NAMESPACE = "hamzadevops"
 STEP = 60  # in seconds
-DAYS = 5
+DAYS = 7
 
 # === Time range (UTC) ===
 end_time = datetime.datetime.utcnow()
