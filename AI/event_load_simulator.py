@@ -70,11 +70,11 @@ def run_phase(concurrent_users, duration_sec, label):
 
 def orchestrate_load_test():
     logger.info("🚀 Starting structured load simulation...\n")
-    run_phase(5, 1800, "Medium Load")   # 30 min
-    run_phase(2, 1800, "Light Load")    # 30 min
-    run_phase(10, 900, "Heavy Load")    # 15 min
-    run_phase(5, 1800, "Medium Load")   # 30 min
-    run_phase(2, 900, "Light Load")     # 15 min
+    run_phase(15, 1800, "Medium Load")   # 30 min
+    run_phase(5, 1800, "Light Load")    # 30 min
+    run_phase(30, 900, "Heavy Load")    # 15 min
+    run_phase(15, 1800, "Medium Load")   # 30 min
+    run_phase(5, 900, "Light Load")     # 15 min
     logger.info("\n✅ All load phases completed.")
 
 if __name__ == "__main__":

@@ -1,0 +1,196 @@
+# Artillery Load Test for Event Management System
+# Duration: 2 hours with dynamic load phases
+
+config:
+  target: 'https://hamzakalech.com'
+  phases:
+    # Phase 1: Medium Load - Business Hours (30 min)
+    - duration: 1800  # 30 minutes
+      arrivalRate: 15  # 15 users per second
+      name: "🟡 Medium Load - Business Hours"
+    
+    # Phase 2: Light Load - Off Hours (30 min)
+    - duration: 1800  # 30 minutes  
+      arrivalRate: 3   # 3 users per second
+      name: "🟢 Light Load - Off Hours"
+    
+    # Phase 3: Heavy Load - Peak Traffic (15 min)
+    - duration: 900   # 15 minutes
+      arrivalRate: 40  # 40 users per second
+      name: "🔴 Heavy Load - Peak Traffic"
+    
+    # Phase 4: Medium Load - Stabilizing (30 min)
+    - duration: 1800  # 30 minutes
+      arrivalRate: 15  # 15 users per second
+      name: "🟡 Medium Load - Stabilizing"
+    
+    # Phase 5: Light Load - Cooldown (15 min)
+    - duration: 900   # 15 minutes
+      arrivalRate: 3   # 3 users per second
+      name: "🟢 Light Load - Cooldown"
+
+  # HTTP configuration
+  http:
+    pool: 50        # Connection pool size
+    timeout: 30     # Request timeout in seconds
+    
+  # TLS configuration for HTTPS
+  tls:
+    rejectUnauthorized: false  # Accept self-signed certificates if any
+
+  # Processor for custom functions
+  processor: "./event-load-functions.js"
+
+  # Reporting
+  plugins:
+    statsd:
+      host: localhost
+      port: 8125
+      prefix: "artillery"
+
+scenarios:
+  # Scenario 1: Frontend User Journey (40% of traffic)
+  - name: "Frontend User Journey"
+    weight: 40
+    flow:
+      # Load main page
+      - get:
+          url: "/"
+          headers:
+            User-Agent: "LoadTest-Browser/1.0"
+          capture:
+            - header: "content-type"
+              as: "pageContentType"
+      
+      # Load static assets (typical browser behavior)
+      - think: 1
+      - get:
+          url: "/main.js"
+          ifTrue: "pageContentType"
+      - get:
+          url: "/styles.css"
+          ifTrue: "pageContentType"
+      - get:
+          url: "/polyfills.js"
+          ifTrue: "pageContentType"
+      
+      # User thinks before interacting
+      - think: 3
+      
+      # Navigate to events section (if exists)
+      - get:
+          url: "/events"
+          headers:
+            Referer: "{{ $target }}/"
+      
+      # User browses events
+      - think: 5
+
+  # Scenario 2: Event API Operations (45% of traffic)
+  - name: "Event Management API"
+    weight: 45
+    flow:
+      # Health check
+      - get:
+          url: "/api/actuator/health"
+          expect:
+            - statusCode: 200
+      
+      # Get all events
+      - think: 1
+      - get:
+          url: "/api/events"
+          headers:
+            Accept: "application/json"
+          capture:
+            - json: "$[0].idEvent"
+              as: "firstEventId"
+              ifExists: true
+      
+      # Create new event (CPU/Memory intensive operation)
+      - think: 2
+      - function: "generateEventData"
+      - post:
+          url: "/api/events"
+          headers:
+            Content-Type: "application/json"
+            Accept: "application/json"
+          json:
+            description: "{{ eventDescription }}"
+            date: "{{ eventDate }}"
+            Number_of_tickets: "{{ ticketNumber }}"
+            additional_notes: "{{ additionalNotes }}"
+            place: "{{ eventPlace }}"
+          capture:
+            - json: "$.idEvent"
+              as: "newEventId"
+              ifExists: true
+      
+      # Get the newly created event
+      - think: 1
+      - get:
+          url: "/api/events/{{ newEventId }}"
+          headers:
+            Accept: "application/json"
+          ifTrue: "newEventId"
+      
+      # Update event (if creation was successful)
+      - think: 2
+      - function: "generateUpdateData"
+      - put:
+          url: "/api/events/{{ newEventId }}"
+          headers:
+            Content-Type: "application/json"
+            Accept: "application/json"
+          json:
+            description: "{{ updatedDescription }}"
+            Number_of_tickets: "{{ updatedTickets }}"
+            additional_notes: "Updated during load test at {{ $timestamp }}"
+          ifTrue: "newEventId"
+      
+      # Search/Filter events (database intensive)
+      - think: 1
+      - get:
+          url: "/api/events?page=0&size=10"
+          headers:
+            Accept: "application/json"
+      
+      # Get event by ID (if we have one from the list)
+      - get:
+          url: "/api/events/{{ firstEventId }}"
+          headers:
+            Accept: "application/json"
+          ifTrue: "firstEventId"
+
+  # Scenario 3: Database Stress Operations (15% of traffic)
+  - name: "Database Intensive Operations"
+    weight: 15
+    flow:
+      # Multiple rapid queries to stress MySQL
+      - loop:
+          - get:
+              url: "/api/events"
+              headers:
+                Accept: "application/json"
+          - think: 0.5
+          - get:
+              url: "/api/events?size=50"
+              headers:
+                Accept: "application/json"
+          - think: 0.5
+        count: 3
+      
+      # Bulk operations
+      - function: "generateBulkEventData"
+      - post:
+          url: "/api/events"
+          headers:
+            Content-Type: "application/json"
+          json:
+            description: "{{ bulkEventDescription }}"
+            date: "{{ bulkEventDate }}"
+            Number_of_tickets: "{{ bulkTicketNumber }}"
+            additional_notes: "Bulk load test event"
+            place: "{{ bulkEventPlace }}"
+      
+      - think: 2
