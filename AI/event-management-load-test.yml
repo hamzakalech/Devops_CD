@@ -1,38 +1,39 @@
 # Artillery Load Test for Event Management System
-# Duration: 2 hours with dynamic load phases
+# Duration: 2 hours with dynamic load phases matching your requirements
 
 config:
   target: 'https://hamzakalech.com'
   phases:
-    # Phase 1: Medium Load - Business Hours (30 min)
+    # Phase 1: Medium Load - 25-30 RPS for 30 min → Expected: 3-5 pods, 2-3 nodes
     - duration: 1800  # 30 minutes
-      arrivalRate: 15  # 15 users per second
-      name: "🟡 Medium Load - Business Hours"
+      arrivalRate: 27  # ~27 users per second (middle of 25-30 range)
+      name: "🟡 Medium Load - Business Hours (25-30 RPS)"
     
-    # Phase 2: Light Load - Off Hours (30 min)
+    # Phase 2: Light Load - 5 RPS for 30 min → Expected: 1-2 pods, 1-2 nodes
     - duration: 1800  # 30 minutes  
-      arrivalRate: 3   # 3 users per second
-      name: "🟢 Light Load - Off Hours"
+      arrivalRate: 5   # 5 users per second
+      name: "🟢 Light Load - Off Hours (5 RPS)"
     
-    # Phase 3: Heavy Load - Peak Traffic (15 min)
+    # Phase 3: Heavy Load - 60-80 RPS for 15 min → Expected: 8-12 pods, 4-6 nodes
     - duration: 900   # 15 minutes
-      arrivalRate: 40  # 40 users per second
-      name: "🔴 Heavy Load - Peak Traffic"
+      arrivalRate: 70  # ~70 users per second (middle of 60-80 range)
+      name: "🔴 Heavy Load - Peak Traffic (60-80 RPS)"
     
-    # Phase 4: Medium Load - Stabilizing (30 min)
+    # Phase 4: Medium Load - 25-30 RPS for 30 min → Expected: 3-5 pods, 2-3 nodes
     - duration: 1800  # 30 minutes
-      arrivalRate: 15  # 15 users per second
-      name: "🟡 Medium Load - Stabilizing"
+      arrivalRate: 27  # ~27 users per second (middle of 25-30 range)
+      name: "🟡 Medium Load - Stabilizing (25-30 RPS)"
     
-    # Phase 5: Light Load - Cooldown (15 min)
+    # Phase 5: Light Load - 5 RPS for 15 min → Expected: 1-2 pods, 1-2 nodes
     - duration: 900   # 15 minutes
-      arrivalRate: 3   # 3 users per second
-      name: "🟢 Light Load - Cooldown"
+      arrivalRate: 5   # 5 users per second
+      name: "🟢 Light Load - Cooldown (5 RPS)"
 
-  # HTTP configuration
+  # HTTP configuration optimized for higher loads
   http:
-    pool: 50        # Connection pool size
-    timeout: 30     # Request timeout in seconds
+    pool: 100       # Increased connection pool for higher RPS
+    timeout: 45     # Increased timeout for heavy load phases
+    keepAlive: true # Reuse connections for better performance
     
   # TLS configuration for HTTPS
   tls:
@@ -41,73 +42,119 @@ config:
   # Processor for custom functions
   processor: "./event-load-functions.js"
 
-  # Reporting
+  # Enhanced reporting and metrics
   plugins:
     statsd:
       host: localhost
       port: 8125
-      prefix: "artillery"
+      prefix: "artillery.eventmgmt"
+    
+    # Add metrics plugin for better monitoring
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+
+  # Variables for dynamic scaling validation
+  variables:
+    expectedPods:
+      - "3-5"    # Medium Load Phase 1
+      - "1-2"    # Light Load Phase 2  
+      - "8-12"   # Heavy Load Phase 3
+      - "3-5"    # Medium Load Phase 4
+      - "1-2"    # Light Load Phase 5
+    expectedNodes:
+      - "2-3"    # Medium Load Phase 1
+      - "1-2"    # Light Load Phase 2
+      - "4-6"    # Heavy Load Phase 3  
+      - "2-3"    # Medium Load Phase 4
+      - "1-2"    # Light Load Phase 5
 
 scenarios:
-  # Scenario 1: Frontend User Journey (40% of traffic)
+  # Scenario 1: Realistic Frontend User Journey (40% of traffic)
   - name: "Frontend User Journey"
     weight: 40
     flow:
-      # Load main page
+      # Log phase start
+      - function: "logPhaseInfo"
+      
+      # Load main page with realistic browser behavior
       - get:
           url: "/"
           headers:
-            User-Agent: "LoadTest-Browser/1.0"
+            User-Agent: "LoadTest-Browser/{{ $randomInt(1000, 9999) }}"
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            Accept-Language: "en-US,en;q=0.5"
+            Cache-Control: "no-cache"
           capture:
             - header: "content-type"
               as: "pageContentType"
       
-      # Load static assets (typical browser behavior)
+      # Simulate browser loading static assets
       - think: 1
-      - get:
-          url: "/main.js"
-          ifTrue: "pageContentType"
-      - get:
-          url: "/styles.css"
-          ifTrue: "pageContentType"
-      - get:
-          url: "/polyfills.js"
-          ifTrue: "pageContentType"
+      - parallel:
+          - get:
+              url: "/main.js"
+              headers:
+                Accept: "application/javascript"
+          - get:
+              url: "/styles.css" 
+              headers:
+                Accept: "text/css"
+          - get:
+              url: "/polyfills.js"
+              headers:
+                Accept: "application/javascript"
       
-      # User thinks before interacting
-      - think: 3
+      # User reads content and thinks
+      - function: "dynamicThinkTime"
+      - think: "{{ dynamicThinkTime / 1000 }}"
       
-      # Navigate to events section (if exists)
+      # Navigate to events section
       - get:
           url: "/events"
           headers:
             Referer: "{{ $target }}/"
+            Accept: "text/html,application/xhtml+xml"
       
-      # User browses events
-      - think: 5
+      # User browses and interacts
+      - think: "{{ $randomInt(3, 8) }}"
+      
+      # Some users might refresh or navigate back
+      - get:
+          url: "/"
+          headers:
+            Referer: "{{ $target }}/events"
+          weight: 30  # Only 30% of users do this
 
-  # Scenario 2: Event API Operations (45% of traffic)
+  # Scenario 2: Event API Operations - Core Functionality (45% of traffic)
   - name: "Event Management API"
     weight: 45
     flow:
-      # Health check
+      # Health check to validate system status
       - get:
           url: "/api/actuator/health"
-          expect:
-            - statusCode: 200
-      
-      # Get all events
-      - think: 1
-      - get:
-          url: "/api/events"
           headers:
             Accept: "application/json"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.status"
+              as: "healthStatus"
+      
+      # Get all events (paginated for better performance)
+      - think: 1
+      - get:
+          url: "/api/events?page=0&size=20"
+          headers:
+            Accept: "application/json"
+            X-Request-ID: "{{ $uuid }}"
           capture:
             - json: "$[0].idEvent"
               as: "firstEventId"
               ifExists: true
+            - json: "$.length"
+              as: "eventCount"
       
-      # Create new event (CPU/Memory intensive operation)
+      # Create new event (resource-intensive operation)
       - think: 2
       - function: "generateEventData"
       - post:
@@ -115,6 +162,7 @@ scenarios:
           headers:
             Content-Type: "application/json"
             Accept: "application/json"
+            X-Request-ID: "{{ $uuid }}"
           json:
             description: "{{ eventDescription }}"
             date: "{{ eventDate }}"
@@ -126,15 +174,17 @@ scenarios:
               as: "newEventId"
               ifExists: true
       
-      # Get the newly created event
+      # Verify creation by fetching the new event
       - think: 1
       - get:
           url: "/api/events/{{ newEventId }}"
           headers:
             Accept: "application/json"
           ifTrue: "newEventId"
+          expect:
+            - statusCode: 200
       
-      # Update event (if creation was successful)
+      # Update event to test PUT operations
       - think: 2
       - function: "generateUpdateData"
       - put:
@@ -142,55 +192,73 @@ scenarios:
           headers:
             Content-Type: "application/json"
             Accept: "application/json"
+            X-Request-ID: "{{ $uuid }}"
           json:
             description: "{{ updatedDescription }}"
             Number_of_tickets: "{{ updatedTickets }}"
-            additional_notes: "Updated during load test at {{ $timestamp }}"
+            additional_notes: "{{ updatedNotes }}"
+            place: "{{ eventPlace }}"
           ifTrue: "newEventId"
       
-      # Search/Filter events (database intensive)
+      # Search and filter operations (database intensive)
       - think: 1
-      - get:
-          url: "/api/events?page=0&size=10"
-          headers:
-            Accept: "application/json"
-      
-      # Get event by ID (if we have one from the list)
-      - get:
-          url: "/api/events/{{ firstEventId }}"
-          headers:
-            Accept: "application/json"
-          ifTrue: "firstEventId"
-
-  # Scenario 3: Database Stress Operations (15% of traffic)
-  - name: "Database Intensive Operations"
-    weight: 15
-    flow:
-      # Multiple rapid queries to stress MySQL
       - loop:
           - get:
+              url: "/api/events?page={{ $randomInt(0, 3) }}&size=10"
+              headers:
+                Accept: "application/json"
+          - get:
+              url: "/api/events/{{ firstEventId }}"
+              headers:
+                Accept: "application/json"
+              ifTrue: "firstEventId"
+        count: 2
+
+  # Scenario 3: High-Intensity Database Operations (15% of traffic)
+  - name: "Database Stress Operations"
+    weight: 15
+    flow:
+      # CPU stress test to trigger HPA scaling
+      - function: "cpuStressTest"
+      
+      # Rapid-fire database queries
+      - loop:
+          - get:
+              url: "/api/events?size={{ $randomInt(20, 50) }}"
+              headers:
+                Accept: "application/json"
+                Cache-Control: "no-cache"
+          - think: 0.3
+          - get:
+              url: "/api/events?page={{ $randomInt(0, 5) }}&size=30"
+              headers:
+                Accept: "application/json"
+          - think: 0.3
+        count: "{{ $randomInt(3, 6) }}"
+      
+      # Bulk event creation for memory/CPU stress
+      - function: "generateBulkEventData"
+      - loop:
+          - post:
               url: "/api/events"
               headers:
+                Content-Type: "application/json"
                 Accept: "application/json"
+                X-Bulk-Operation: "true"
+              json:
+                description: "{{ bulkEventDescription }}-{{ $loopCount }}"
+                date: "{{ bulkEventDate }}"
+                Number_of_tickets: "{{ bulkTicketNumber }}"
+                additional_notes: "Bulk operation {{ $loopCount }} - Load test"
+                place: "{{ bulkEventPlace }}"
           - think: 0.5
-          - get:
-              url: "/api/events?size=50"
-              headers:
-                Accept: "application/json"
-          - think: 0.5
-        count: 3
+        count: "{{ $randomInt(2, 4) }}"
       
-      # Bulk operations
-      - function: "generateBulkEventData"
-      - post:
-          url: "/api/events"
+      # Memory stress through large data queries
+      - get:
+          url: "/api/events?size=100"
           headers:
-            Content-Type: "application/json"
-          json:
-            description: "{{ bulkEventDescription }}"
-            date: "{{ bulkEventDate }}"
-            Number_of_tickets: "{{ bulkTicketNumber }}"
-            additional_notes: "Bulk load test event"
-            place: "{{ bulkEventPlace }}"
+            Accept: "application/json"
+            X-Large-Query: "true"
       
-      - think: 2
+      - think: 1
