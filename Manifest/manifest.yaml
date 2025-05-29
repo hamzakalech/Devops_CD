@@ -160,10 +160,10 @@ spec:
           resources:
             requests:
               memory: "512Mi" 
-              cpu: "100m"     
+              cpu: "250m"     
             limits:
               memory: "1Gi" 
-              cpu: "250m"     
+              cpu: "500m"     
           ports:
             - containerPort: 8083
           env:
