@@ -17,16 +17,16 @@ spec:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 65
+        averageUtilization: 45
   - type: Resource
     resource:
       name: memory
       target:
         type: Utilization
-        averageUtilization: 75
+        averageUtilization: 45
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 60  # Wait 1 minute before scaling up
+      stabilizationWindowSeconds: 30  # Wait 1 minute before scaling up
       policies:
       - type: Percent
         value: 100  # Can double replicas

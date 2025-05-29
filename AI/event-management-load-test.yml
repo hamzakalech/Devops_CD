@@ -1,264 +1,192 @@
-# Artillery Load Test for Event Management System
-# Duration: 2 hours with dynamic load phases matching your requirements
+# Artillery Load Test for Event Management System - OPTIMIZED
+# Enhanced to trigger proper HPA scaling with better resource utilization
 
 config:
   target: 'https://hamzakalech.com'
   phases:
-    # Phase 1: Medium Load - 25-30 RPS for 30 min → Expected: 3-5 pods, 2-3 nodes
+    # Phase 1: Medium Load - Aggressive scaling trigger
     - duration: 1800  # 30 minutes
-      arrivalRate: 27  # ~27 users per second (middle of 25-30 range)
-      name: "🟡 Medium Load - Business Hours (25-30 RPS)"
+      arrivalRate: 35  # Increased from 27 to ensure scaling
+      rampTo: 40      # Ramp up to create sustained pressure
+      name: "🟡 Medium Load - Aggressive Scaling (35-40 RPS)"
     
-    # Phase 2: Light Load - 5 RPS for 30 min → Expected: 1-2 pods, 1-2 nodes
-    - duration: 1800  # 30 minutes  
-      arrivalRate: 5   # 5 users per second
-      name: "🟢 Light Load - Off Hours (5 RPS)"
-    
-    # Phase 3: Heavy Load - 60-80 RPS for 15 min → Expected: 8-12 pods, 4-6 nodes
-    - duration: 900   # 15 minutes
-      arrivalRate: 70  # ~70 users per second (middle of 60-80 range)
-      name: "🔴 Heavy Load - Peak Traffic (60-80 RPS)"
-    
-    # Phase 4: Medium Load - 25-30 RPS for 30 min → Expected: 3-5 pods, 2-3 nodes
+    # Phase 2: Light Load - Scale down validation  
     - duration: 1800  # 30 minutes
-      arrivalRate: 27  # ~27 users per second (middle of 25-30 range)
-      name: "🟡 Medium Load - Stabilizing (25-30 RPS)"
+      arrivalRate: 8   # Slightly higher to maintain some load
+      name: "🟢 Light Load - Scale Down Test (8 RPS)"
     
-    # Phase 5: Light Load - 5 RPS for 15 min → Expected: 1-2 pods, 1-2 nodes
+    # Phase 3: Heavy Load - Maximum scaling trigger
     - duration: 900   # 15 minutes
-      arrivalRate: 5   # 5 users per second
-      name: "🟢 Light Load - Cooldown (5 RPS)"
+      arrivalRate: 80  # Higher initial load
+      rampTo: 100     # Ramp to maximum load
+      name: "🔴 Heavy Load - Maximum Scaling (80-100 RPS)"
+    
+    # Phase 4: Medium Load - Stabilization
+    - duration: 1800  # 30 minutes
+      arrivalRate: 35  
+      rampTo: 40
+      name: "🟡 Medium Load - Stabilization (35-40 RPS)"
+    
+    # Phase 5: Light Load - Final scale down
+    - duration: 900   # 15 minutes
+      arrivalRate: 8
+      name: "🟢 Light Load - Final Cleanup (8 RPS)"
 
-  # HTTP configuration optimized for higher loads
+  # Optimized HTTP settings for better resource utilization
   http:
-    pool: 100       # Increased connection pool for higher RPS
-    timeout: 45     # Increased timeout for heavy load phases
-    keepAlive: true # Reuse connections for better performance
+    pool: 50        # Reduced to create more connection pressure
+    timeout: 30     # Shorter timeout to fail faster and retry
+    keepAlive: false # Force new connections for more CPU load
     
-  # TLS configuration for HTTPS
   tls:
-    rejectUnauthorized: false  # Accept self-signed certificates if any
+    rejectUnauthorized: false
 
-  # Processor for custom functions
   processor: "./event-load-functions.js"
 
-  # Enhanced reporting and metrics
+  # Add proper metrics collection
   plugins:
-    statsd:
-      host: localhost
-      port: 8125
-      prefix: "artillery.eventmgmt"
+    ensure:
+      p99: 5000  # Ensure 99% of requests complete within 5s
+      maxErrorRate: 5  # Allow up to 5% error rate during scaling
     
-    # Add metrics plugin for better monitoring
-    metrics-by-endpoint:
-      useOnlyRequestNames: true
-
-  # Variables for dynamic scaling validation
+  # Environment variables for better load distribution
   variables:
-    expectedPods:
-      - "3-5"    # Medium Load Phase 1
-      - "1-2"    # Light Load Phase 2  
-      - "8-12"   # Heavy Load Phase 3
-      - "3-5"    # Medium Load Phase 4
-      - "1-2"    # Light Load Phase 5
-    expectedNodes:
-      - "2-3"    # Medium Load Phase 1
-      - "1-2"    # Light Load Phase 2
-      - "4-6"    # Heavy Load Phase 3  
-      - "2-3"    # Medium Load Phase 4
-      - "1-2"    # Light Load Phase 5
+    scalingTargets:
+      - "5-8"     # Increased expected pods for medium load
+      - "1-3"     # Light load
+      - "12-20"   # Increased for heavy load
+      - "5-8"     # Medium load stabilization  
+      - "1-3"     # Final cleanup
 
 scenarios:
-  # Scenario 1: Realistic Frontend User Journey (40% of traffic)
-  - name: "Frontend User Journey"
-    weight: 40
+  # Scenario 1: CPU-Intensive Frontend Operations (30% of traffic)
+  - name: "CPU Intensive Frontend"
+    weight: 30
     flow:
-      # Log phase start
+      - function: "initializeTest"
       - function: "logPhaseInfo"
       
-      # Load main page with realistic browser behavior
-      - get:
-          url: "/"
-          headers:
-            User-Agent: "LoadTest-Browser/{{ $randomInt(1000, 9999) }}"
-            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-            Accept-Language: "en-US,en;q=0.5"
-            Cache-Control: "no-cache"
-          capture:
-            - header: "content-type"
-              as: "pageContentType"
+      # Multiple rapid requests to increase CPU load
+      - loop:
+          - get:
+              url: "/"
+              headers:
+                User-Agent: "LoadTest-CPU-{{ $randomInt(1000, 9999) }}"
+                Cache-Control: "no-cache, no-store, must-revalidate"
+                Pragma: "no-cache"
+          - think: 0.1
+          - get:
+              url: "/events"
+              headers:
+                Cache-Control: "no-cache"
+          - think: 0.1
+        count: "{{ $randomInt(3, 6) }}"
       
-      # Simulate browser loading static assets
-      - think: 1
+      # CPU stress operations
+      - function: "cpuStressTest"
+      
+      # Concurrent asset loading to increase memory pressure
       - parallel:
           - get:
               url: "/main.js"
-              headers:
-                Accept: "application/javascript"
           - get:
-              url: "/styles.css" 
-              headers:
-                Accept: "text/css"
+              url: "/styles.css"
           - get:
               url: "/polyfills.js"
-              headers:
-                Accept: "application/javascript"
-      
-      # User reads content and thinks
-      - function: "dynamicThinkTime"
-      - think: "{{ dynamicThinkTime / 1000 }}"
-      
-      # Navigate to events section
-      - get:
-          url: "/events"
-          headers:
-            Referer: "{{ $target }}/"
-            Accept: "text/html,application/xhtml+xml"
-      
-      # User browses and interacts
-      - think: "{{ $randomInt(3, 8) }}"
-      
-      # Some users might refresh or navigate back
-      - get:
-          url: "/"
-          headers:
-            Referer: "{{ $target }}/events"
-          weight: 30  # Only 30% of users do this
+          - get:
+              url: "/runtime.js"
 
-  # Scenario 2: Event API Operations - Core Functionality (45% of traffic)
-  - name: "Event Management API"
-    weight: 45
+  # Scenario 2: High-Pressure API Operations (50% of traffic)
+  - name: "High Pressure API"
+    weight: 50
     flow:
-      # Health check to validate system status
-      - get:
-          url: "/api/actuator/health"
-          headers:
-            Accept: "application/json"
-          expect:
-            - statusCode: 200
-          capture:
-            - json: "$.status"
-              as: "healthStatus"
+      - function: "initializeTest"
       
-      # Get all events (paginated for better performance)
-      - think: 1
-      - get:
-          url: "/api/events?page=0&size=20"
-          headers:
-            Accept: "application/json"
-            X-Request-ID: "{{ $uuid }}"
-          capture:
-            - json: "$[0].idEvent"
-              as: "firstEventId"
-              ifExists: true
-            - json: "$.length"
-              as: "eventCount"
-      
-      # Create new event (resource-intensive operation)
-      - think: 2
-      - function: "generateEventData"
-      - post:
-          url: "/api/events"
-          headers:
-            Content-Type: "application/json"
-            Accept: "application/json"
-            X-Request-ID: "{{ $uuid }}"
-          json:
-            description: "{{ eventDescription }}"
-            date: "{{ eventDate }}"
-            Number_of_tickets: "{{ ticketNumber }}"
-            additional_notes: "{{ additionalNotes }}"
-            place: "{{ eventPlace }}"
-          capture:
-            - json: "$.idEvent"
-              as: "newEventId"
-              ifExists: true
-      
-      # Verify creation by fetching the new event
-      - think: 1
-      - get:
-          url: "/api/events/{{ newEventId }}"
-          headers:
-            Accept: "application/json"
-          ifTrue: "newEventId"
-          expect:
-            - statusCode: 200
-      
-      # Update event to test PUT operations
-      - think: 2
-      - function: "generateUpdateData"
-      - put:
-          url: "/api/events/{{ newEventId }}"
-          headers:
-            Content-Type: "application/json"
-            Accept: "application/json"
-            X-Request-ID: "{{ $uuid }}"
-          json:
-            description: "{{ updatedDescription }}"
-            Number_of_tickets: "{{ updatedTickets }}"
-            additional_notes: "{{ updatedNotes }}"
-            place: "{{ eventPlace }}"
-          ifTrue: "newEventId"
-      
-      # Search and filter operations (database intensive)
-      - think: 1
+      # Rapid health checks to warm up
       - loop:
           - get:
-              url: "/api/events?page={{ $randomInt(0, 3) }}&size=10"
-              headers:
-                Accept: "application/json"
-          - get:
-              url: "/api/events/{{ firstEventId }}"
-              headers:
-                Accept: "application/json"
-              ifTrue: "firstEventId"
-        count: 2
-
-  # Scenario 3: High-Intensity Database Operations (15% of traffic)
-  - name: "Database Stress Operations"
-    weight: 15
-    flow:
-      # CPU stress test to trigger HPA scaling
-      - function: "cpuStressTest"
-      
-      # Rapid-fire database queries
-      - loop:
-          - get:
-              url: "/api/events?size={{ $randomInt(20, 50) }}"
+              url: "/api/actuator/health"
               headers:
                 Accept: "application/json"
                 Cache-Control: "no-cache"
-          - think: 0.3
+          - think: 0.05
+        count: 3
+      
+      # Intensive event operations
+      - get:
+          url: "/api/events?size=50"  # Larger page size
+          headers:
+            Accept: "application/json"
+            X-Load-Test: "high-pressure"
+      
+      # Multiple concurrent event creations
+      - function: "generateEventData"
+      - parallel:
+          - post:
+              url: "/api/events"
+              headers:
+                Content-Type: "application/json"
+              json:
+                description: "{{ eventDescription }}-Parallel-1"
+                date: "{{ eventDate }}"
+                Number_of_tickets: "{{ ticketNumber }}"
+                additional_notes: "{{ additionalNotes }}"
+                place: "{{ eventPlace }}"
+          - post:
+              url: "/api/events"
+              headers:
+                Content-Type: "application/json"
+              json:
+                description: "{{ eventDescription }}-Parallel-2"
+                date: "{{ eventDate }}"
+                Number_of_tickets: "{{ $randomInt(100, 500) }}"
+                additional_notes: "Parallel creation stress test"
+                place: "{{ eventPlace }}"
+      
+      # Database stress with large queries
+      - loop:
           - get:
-              url: "/api/events?page={{ $randomInt(0, 5) }}&size=30"
+              url: "/api/events?page={{ $randomInt(0, 10) }}&size=100"
               headers:
                 Accept: "application/json"
-          - think: 0.3
-        count: "{{ $randomInt(3, 6) }}"
+                X-Database-Stress: "true"
+          - think: 0.2
+          - function: "memoryStressTest"
+        count: "{{ $randomInt(2, 5) }}"
+
+  # Scenario 3: Memory and Database Intensive (20% of traffic)
+  - name: "Memory Database Stress"
+    weight: 20
+    flow:
+      - function: "memoryStressTest"
+      - function: "cpuStressTest"
       
-      # Bulk event creation for memory/CPU stress
+      # Large bulk operations
       - function: "generateBulkEventData"
       - loop:
           - post:
               url: "/api/events"
               headers:
                 Content-Type: "application/json"
-                Accept: "application/json"
-                X-Bulk-Operation: "true"
+                X-Bulk-Memory-Test: "{{ $loopCount }}"
               json:
-                description: "{{ bulkEventDescription }}-{{ $loopCount }}"
+                description: "{{ bulkEventDescription }}-Memory-{{ $loopCount }}"
                 date: "{{ bulkEventDate }}"
-                Number_of_tickets: "{{ bulkTicketNumber }}"
-                additional_notes: "Bulk operation {{ $loopCount }} - Load test"
-                place: "{{ bulkEventPlace }}"
-          - think: 0.5
-        count: "{{ $randomInt(2, 4) }}"
+                Number_of_tickets: "{{ $randomInt(500, 1000) }}"  # Larger numbers
+                additional_notes: "Memory stress test with large ticket count and extended description data that will consume more memory during processing and JSON serialization operations"
+                place: "{{ bulkEventPlace }} - Extended location data"
+          - function: "cpuStressTest"
+          - think: 0.3
+        count: "{{ $randomInt(4, 8) }}"
       
-      # Memory stress through large data queries
-      - get:
-          url: "/api/events?size=100"
-          headers:
-            Accept: "application/json"
-            X-Large-Query: "true"
+      # Concurrent large queries
+      - parallel:
+          - get:
+              url: "/api/events?size=200"
+          - get:
+              url: "/api/events?page=0&size=150"
+          - get:
+              url: "/api/events?page=1&size=150"
       
-      - think: 1
+      # Additional memory pressure
+      - function: "memoryStressTest"
