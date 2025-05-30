@@ -26,13 +26,13 @@ spec:
         averageUtilization: 45
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 30  # Wait 1 minute before scaling up
+      stabilizationWindowSeconds: 15  # Wait 1 minute before scaling up
       policies:
       - type: Percent
         value: 100  # Can double replicas
         periodSeconds: 60
       - type: Pods
-        value: 3    # Can add max 3 pods at once
+        value: 5    # Can add max 3 pods at once
         periodSeconds: 60
       selectPolicy: Max  # policy that allows more scaling
     scaleDown:

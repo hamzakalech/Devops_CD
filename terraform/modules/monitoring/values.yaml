@@ -26,7 +26,7 @@ prometheus:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 1Gi
+              storage: 3Gi
     externalUrl: "https://hamzakalech.chickenkiller.com/prometheus"
     routePrefix: /prometheus
 

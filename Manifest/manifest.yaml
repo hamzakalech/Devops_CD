@@ -155,7 +155,7 @@ spec:
         agentpool: worker
       containers:
         - name: eventmanagement
-          image: hamzakalech/event-management:v82
+          image: hamzakalech/event-management:v83
           imagePullPolicy: Always
           resources:
             requests:
