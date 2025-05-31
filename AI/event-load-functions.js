@@ -191,7 +191,7 @@ module.exports = {
       currentPhase = 'Phase 1: Medium Load';
       expectedLoad = '25-30 RPS';
       expectedPods = '3-5 pods, 2-3 nodes';
-    } else if (elapsedMinutes < 60) {
+    } else if (elapsedMinutes < 50) {
       currentPhase = 'Phase 2: Light Load';
       expectedLoad = '5 RPS';
       expectedPods = '1-2 pods, 1-2 nodes';
@@ -233,11 +233,11 @@ module.exports = {
       // Medium load phases - normal user behavior
       baseThinkTime = 2500;
       variationRange = 4000;
-    } else if (elapsedMinutes < 60 || elapsedMinutes >= 105) {
+    } else if (elapsedMinutes < 50 || elapsedMinutes >= 105) {
       // Light load phases - users taking more time
       baseThinkTime = 4000;
       variationRange = 6000;
-    } else if (elapsedMinutes >= 60 && elapsedMinutes < 75) {
+    } else if (elapsedMinutes >= 50 && elapsedMinutes < 75) {
       // Heavy load phase - faster user interactions
       baseThinkTime = 1000;
       variationRange = 2000;

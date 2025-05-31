@@ -83,11 +83,11 @@ spec:
           name: mysql
           resources:
             requests:
-              memory: "256Mi" 
-              cpu: "500m"     
+              memory: "500Mi" 
+              cpu: "1000m"     
             limits:
               memory: "1Gi" 
-              cpu: "900m"     
+              cpu: "1500m"     
           env:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
@@ -155,7 +155,7 @@ spec:
         agentpool: worker
       containers:
         - name: eventmanagement
-          image: hamzakalech/event-management:v83
+          image: hamzakalech/event-management:v84
           imagePullPolicy: Always
           resources:
             requests:
@@ -235,11 +235,11 @@ spec:
             - containerPort: 80
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "250m"
-            limits:
               memory: "256Mi"
               cpu: "500m"
+            limits:
+              memory: "500Mi"
+              cpu: "900m"
           livenessProbe:
             httpGet:
               path: /

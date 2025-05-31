@@ -17,13 +17,13 @@ spec:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 30
+        averageUtilization: 25
   - type: Resource
     resource:
       name: memory
       target:
         type: Utilization
-        averageUtilization: 45
+        averageUtilization: 40
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 15  # Wait 1 minute before scaling up

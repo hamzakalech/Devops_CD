@@ -6,30 +6,30 @@ config:
   phases:
     # Phase 1: Medium Load - Aggressive scaling trigger
     - duration: 1800  # 30 minutes
-      arrivalRate: 35  # Increased from 27 to ensure scaling
-      rampTo: 40      # Ramp up to create sustained pressure
+      arrivalRate: 45  # Increased from 27 to ensure scaling
+      rampTo: 55      # Ramp up to create sustained pressure
       name: "🟡 Medium Load - Aggressive Scaling (35-40 RPS)"
     
     # Phase 2: Light Load - Scale down validation  
-    - duration: 1800  # 30 minutes
-      arrivalRate: 8   # Slightly higher to maintain some load
+    - duration: 1200  # 20 minutes
+      arrivalRate: 15   # Slightly higher to maintain some load
       name: "🟢 Light Load - Scale Down Test (8 RPS)"
     
     # Phase 3: Heavy Load - Maximum scaling trigger
-    - duration: 900   # 15 minutes
-      arrivalRate: 80  # Higher initial load
-      rampTo: 100     # Ramp to maximum load
+    - duration: 1500   # 25 minutes
+      arrivalRate: 90  # Higher initial load
+      rampTo: 110     # Ramp to maximum load
       name: "🔴 Heavy Load - Maximum Scaling (80-100 RPS)"
     
     # Phase 4: Medium Load - Stabilization
     - duration: 1800  # 30 minutes
-      arrivalRate: 35  
-      rampTo: 40
+      arrivalRate: 40  
+      rampTo: 45
       name: "🟡 Medium Load - Stabilization (35-40 RPS)"
     
     # Phase 5: Light Load - Final scale down
     - duration: 900   # 15 minutes
-      arrivalRate: 8
+      arrivalRate: 15
       name: "🟢 Light Load - Final Cleanup (8 RPS)"
 
   # Optimized HTTP settings for better resource utilization
