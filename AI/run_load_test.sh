@@ -1,6 +1,5 @@
 #!/bin/bash
 # Enhanced Load Test Execution for Event Management System
-# Aligned with specified load requirements: Medium(25-30 RPS) → Light(5 RPS) → Heavy(60-80 RPS) → Medium(25-30 RPS) → Light(5 RPS)
 
 set -e
 
@@ -99,7 +98,6 @@ cat <<'EOF' > monitor_enhanced.sh
 LOG_FILE="logs/monitoring/enhanced-monitoring-$(date +%Y%m%d-%H%M%S).log"
 PHASE_LOG="logs/monitoring/phase-transitions-$(date +%Y%m%d-%H%M%S).log"
 
-# Colors for monitoring output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -111,11 +109,11 @@ NC='\033[0m'
     echo "Enhanced Load Test Monitoring Started: $(date)"
     echo "=============================================="
     echo "Expected Scaling Pattern:"
-    echo "Phase 1: Medium Load (30min) - 25-30 RPS → 3-5 pods, 2-3 nodes"
-    echo "Phase 2: Light Load (30min)  - 5 RPS    → 1-2 pods, 1-2 nodes" 
-    echo "Phase 3: Heavy Load (15min)  - 60-80 RPS → 8-12 pods, 4-6 nodes"
-    echo "Phase 4: Medium Load (30min) - 25-30 RPS → 3-5 pods, 2-3 nodes"
-    echo "Phase 5: Light Load (15min)  - 5 RPS    → 1-2 pods, 1-2 nodes"
+    echo "Phase 1: Medium Load (30min)  - 45-55 RPS  → 3-5 pods, 2-3 nodes"
+    echo "Phase 2: Light Load (20min)   - 10 RPS     → 1-2 pods, 1-2 nodes"
+    echo "Phase 3: Heavy Load (25min)   - 90-110 RPS → 8-12 pods, 4-6 nodes"
+    echo "Phase 4: Medium Load (30min)  - 45-55 RPS  → 3-5 pods, 2-3 nodes"
+    echo "Phase 5: Light Load (15min)   - 10 RPS     → 1-2 pods, 1-2 nodes"
     echo "=============================================="
 } | tee -a $LOG_FILE
 
@@ -129,27 +127,23 @@ while true; do
     
     # Determine current phase based on elapsed time
     if [ $ELAPSED_MINUTES -lt 30 ]; then
-        CURRENT_PHASE="Phase 1: Medium Load (25-30 RPS)"
+        CURRENT_PHASE="Phase 1: Medium Load (45-55 RPS)"
         EXPECTED_PODS="3-5"
         EXPECTED_NODES="2-3"
-    elif [ $ELAPSED_MINUTES -lt 60 ]; then
-        CURRENT_PHASE="Phase 2: Light Load (5 RPS)"
+    elif [ $ELAPSED_MINUTES -lt 50 ]; then
+        CURRENT_PHASE="Phase 2: Light Load (10 RPS)"
         EXPECTED_PODS="1-2"
         EXPECTED_NODES="1-2"
     elif [ $ELAPSED_MINUTES -lt 75 ]; then
-        CURRENT_PHASE="Phase 3: Heavy Load (60-80 RPS)"
+        CURRENT_PHASE="Phase 3: Heavy Load (90-110 RPS)"
         EXPECTED_PODS="8-12"
         EXPECTED_NODES="4-6"
     elif [ $ELAPSED_MINUTES -lt 105 ]; then
-        CURRENT_PHASE="Phase 4: Medium Load (25-30 RPS)"
+        CURRENT_PHASE="Phase 4: Medium Load (45-55 RPS)"
         EXPECTED_PODS="3-5"
         EXPECTED_NODES="2-3"
-    elif [ $ELAPSED_MINUTES -lt 120 ]; then
-        CURRENT_PHASE="Phase 5: Light Load (5 RPS)"
-        EXPECTED_PODS="1-2"
-        EXPECTED_NODES="1-2"
     else
-        CURRENT_PHASE="Post-Test Monitoring"
+        CURRENT_PHASE="Phase 5: Light Load (10 RPS)"
         EXPECTED_PODS="1-2"
         EXPECTED_NODES="1-2"
     fi
@@ -189,7 +183,7 @@ while true; do
         done || echo "   Node metrics temporarily unavailable"
         
         # Phase validation
-        if [ $APP_PODS -ge 8 ] && [ $ELAPSED_MINUTES -ge 60 ] && [ $ELAPSED_MINUTES -lt 75 ]; then
+        if [ $APP_PODS -ge 8 ] && [ $ELAPSED_MINUTES -ge 50 ] && [ $ELAPSED_MINUTES -lt 75 ]; then
             echo -e "${GREEN}✅ Heavy load scaling detected: ${APP_PODS} pods${NC}" | tee -a $PHASE_LOG
         fi
         
@@ -217,18 +211,17 @@ sleep 5
 # Display enhanced test plan
 echo ""
 print_phase "📋 Detailed Load Test Execution Plan:"
-echo "┌─────────────────────────────────────────────────────────────────┐"
-echo "│ Phase │ Duration │   Load    │ Expected Scaling │ Validation    │"
-echo "├─────────────────────────────────────────────────────────────────┤"
-echo "│   1   │  30 min  │ 25-30 RPS │  3-5 pods, 2-3n │ HPA triggered │"
-echo "│   2   │  30 min  │   5 RPS   │  1-2 pods, 1-2n │ Scale down    │"
-echo "│   3   │  15 min  │ 60-80 RPS │ 8-12 pods, 4-6n │ Peak scaling  │"
-echo "│   4   │  30 min  │ 25-30 RPS │  3-5 pods, 2-3n │ Stabilization │"
-echo "│   5   │  15 min  │   5 RPS   │  1-2 pods, 1-2n │ Final cleanup │"
-echo "└─────────────────────────────────────────────────────────────────┘"
+echo "┌────────────────────────────────────────────────────────────────────────────┐"
+echo "│ Phase │ Duration │    Load     │ Expected Scaling │ Validation            │"
+echo "├────────────────────────────────────────────────────────────────────────────┤"
+echo "│  1    │ 30 min   │ 45–55 RPS   │ 3-5 pods, 2-3 n │ HPA triggered         │"
+echo "│  2    │ 20 min   │ 10 RPS      │ 1-2 pods, 1-2 n │ Scale down            │"
+echo "│  3    │ 25 min   │ 90–110 RPS  │ 8-12 pods,4-6 n │ Peak scaling          │"
+echo "│  4    │ 30 min   │ 45–55 RPS   │ 3-5 pods, 2-3 n │ Stabilization         │"
+echo "│  5    │ 15 min   │ 10 RPS      │ 1-2 pods, 1-2 n │ Final cleanup         │"
+echo "└────────────────────────────────────────────────────────────────────────────┘"
 echo ""
 
-# Final countdown with cancel option
 print_warning "⏰ Starting optimized load test in 15 seconds..."
 print_warning "   Press Ctrl+C to cancel"
 echo ""
@@ -239,7 +232,6 @@ for i in {15..1}; do
 done
 echo ""
 
-# Execute the load test with enhanced logging
 print_success "🔥 LAUNCHING OPTIMIZED LOAD TEST!"
 print_phase "Start time: $(date)"
 print_phase "Target: https://hamzakalech.com"
@@ -248,7 +240,6 @@ print_phase "Configuration: event-management-load-test.yml"
 START_TIMESTAMP=$(date +%s)
 START_TIME=$(date)
 
-# Run Artillery with enhanced output capturing
 artillery run \
     --output "results/raw/load-test-$(date +%Y%m%d-%H%M%S).json" \
     event-management-load-test.yml 2>&1 | tee "logs/artillery/execution-$(date +%Y%m%d-%H%M%S).log"
@@ -257,7 +248,6 @@ END_TIMESTAMP=$(date +%s)
 END_TIME=$(date)
 TOTAL_DURATION=$((END_TIMESTAMP - START_TIMESTAMP))
 
-# Test completion summary
 print_success "🎉 Load test execution completed!"
 echo ""
 print_phase "Execution Summary:"
@@ -265,7 +255,6 @@ echo "Start time: $START_TIME"
 echo "End time: $END_TIME"
 echo "Total duration: $((TOTAL_DURATION / 60)) minutes and $((TOTAL_DURATION % 60)) seconds"
 
-# Enhanced final status analysis
 print_status "📊 Final cluster analysis..."
 
 echo ""
@@ -280,7 +269,6 @@ echo ""
 print_phase "Final Node Status:"
 kubectl get nodes -o wide
 
-# Generate comprehensive test report
 print_status "📈 Generating comprehensive test report..."
 
 cat > "results/reports/test-summary-$(date +%Y%m%d-%H%M%S).md" <<EOF
@@ -294,11 +282,11 @@ cat > "results/reports/test-summary-$(date +%Y%m%d-%H%M%S).md" <<EOF
 - **Actual Duration**: $((TOTAL_DURATION / 60)) minutes
 
 ## Load Phases Executed
-1. **Medium Load** (30min): 27 RPS → Expected 3-5 pods, 2-3 nodes
-2. **Light Load** (30min): 5 RPS → Expected 1-2 pods, 1-2 nodes
-3. **Heavy Load** (15min): 70 RPS → Expected 8-12 pods, 4-6 nodes
-4. **Medium Load** (30min): 27 RPS → Expected 3-5 pods, 2-3 nodes
-5. **Light Load** (15min): 5 RPS → Expected 1-2 pods, 1-2 nodes
+1. **Medium Load** (30min): 45-55 RPS → Expected 3-5 pods, 2-3 nodes
+2. **Light Load** (20min): 10 RPS → Expected 1-2 pods, 1-2 nodes
+3. **Heavy Load** (25min): 90-110 RPS → Expected 8-12 pods, 4-6 nodes
+4. **Medium Load** (30min): 45-55 RPS → Expected 3-5 pods, 2-3 nodes
+5. **Light Load** (15min): 10 RPS → Expected 1-2 pods, 1-2 nodes
 
 ## Files Generated
 - **Raw Results**: results/raw/load-test-*.json
@@ -338,7 +326,6 @@ echo "   • artillery report results/raw/load-test-*.json"
 echo "   • cat logs/monitoring/enhanced-monitoring-*.log | grep 'Heavy load scaling'"
 echo ""
 
-# Extended monitoring for scale-down observation
 print_status "🔍 Monitoring scale-down behavior for 10 minutes..."
 print_warning "   This helps validate HPA scale-down policies"
 
