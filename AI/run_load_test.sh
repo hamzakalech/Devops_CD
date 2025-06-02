@@ -33,8 +33,10 @@ mkdir -p results/{raw,reports} logs/{monitoring,artillery,validation} screenshot
 
 # Test site accessibility with detailed checks
 print_status "Testing site accessibility and performance..."
-if timeout 15 curl -s -w "HTTP: %{http_code} | DNS: %{time_namelookup}s | Connect: %{time_connect}s | Total: %{time_total}s\n" https://hamzakalech.com > logs/validation/connectivity-$(date +%Y%m%d-%H%M%S).log; then
-    print_success "✅ https://hamzakalech.com is accessible and responding"
+INGRESS_IP="172.210.123.94"
+TARGET_HOST="hamzakalech.com"
+if timeout 15 curl -k -H "Host: $TARGET_HOST" -s -w "HTTP: %{http_code} | DNS: %{time_namelookup}s | Connect: %{time_connect}s | Total: %{time_total}s\n" https://$INGRESS_IP > logs/validation/connectivity-$(date +%Y%m%d-%H%M%S).log; then
+    print_success "✅ $TARGET_HOST is accessible via Ingress IP $INGRESS_IP"
     cat logs/validation/connectivity-*.log | tail -1
 else
     print_error "❌ Cannot access https://hamzakalech.com"
