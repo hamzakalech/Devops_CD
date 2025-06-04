@@ -155,3 +155,6 @@ module "argocd" {
   }
 }
 
+module "cluster_autoscaler" {
+  source            = "./modules/cluster_autoscaler"
+}

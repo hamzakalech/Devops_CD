@@ -17,13 +17,13 @@ spec:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 25
+        averageUtilization: 75
   - type: Resource
     resource:
       name: memory
       target:
         type: Utilization
-        averageUtilization: 60
+        averageUtilization: 90
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 15  # Wait 1 minute before scaling up
@@ -36,14 +36,14 @@ spec:
         periodSeconds: 60
       selectPolicy: Max  # policy that allows more scaling
     scaleDown:
-      stabilizationWindowSeconds: 100  # Wait 5 minutes before scaling down
+      stabilizationWindowSeconds: 40  # Wait 5 minutes before scaling down
       policies:
       - type: Percent
-        value: 70   # Can reduce by 50%
-        periodSeconds: 60
+        value: 80   # Can reduce by 50%
+        periodSeconds: 30
       - type: Pods
-        value: 4    # Can remove max 2 pods at once
-        periodSeconds: 60
+        value: 6    # Can remove max 2 pods at once
+        periodSeconds: 30
       selectPolicy: Min  # policy that allows less aggressive scaling down
 
 ---

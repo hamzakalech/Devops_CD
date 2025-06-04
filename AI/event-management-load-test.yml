@@ -5,19 +5,19 @@ config:
   phases:
     # ───────── Phase 1: Medium (30 min) ─────────
     - duration: 1800      # 30 min
-      arrivalRate: 50
+      arrivalRate: 65
       name: "🟡 Medium (1)"
     # ───────── Phase 2: Light  (20 min) ─────────
     - duration: 1200      # 20 min
       arrivalRate: 5
       name: "🟢 Light (1)"
-    # ───────── Phase 3: Heavy  (15 min) ─────────
-    - duration: 900       # 15 min
-      arrivalRate: 70
+    # ───────── Phase 3: Heavy  (25 min) ─────────
+    - duration: 1500       # 25 min
+      arrivalRate: 150
       name: "🔴 Heavy"
     # ───────── Phase 4: Medium (30 min) ─────────
     - duration: 1800
-      arrivalRate: 50
+      arrivalRate: 65
       name: "🟡 Medium (2)"
     # ───────── Phase 5: Light  (15 min) ─────────
     - duration: 900
