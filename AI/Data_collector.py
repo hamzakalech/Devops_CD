@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PrometheusConfig:
     """Configuration for Prometheus data collection"""
-    url: str = "https://prometheus.hamzakalech.com"
+    url: str = "https://prometheus.hamzakalech.com/prometheus"
     namespace: str = "hamzadevops"
     step_seconds: int = 30  # Higher resolution for ML
     days_back: int = 1  # Focus on recent load test data
