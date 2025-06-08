@@ -78,16 +78,21 @@ spec:
     spec:
       nodeSelector:
         agentpool: worker
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "app"
+          effect: "NoSchedule"
       containers:
         - image: mysql:latest
           name: mysql
           resources:
             requests:
               memory: "500Mi" 
-              cpu: "1000m"     
+              cpu: "250m"     
             limits:
               memory: "1Gi" 
-              cpu: "1500m"     
+              cpu: "500m"     
           env:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
@@ -153,6 +158,11 @@ spec:
     spec:
       nodeSelector:
         agentpool: worker
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "app"
+          effect: "NoSchedule"
       containers:
         - name: eventmanagement
           image: hamzakalech/event-management:v86
@@ -160,10 +170,10 @@ spec:
           resources:
             requests:
               memory: "512Mi" 
-              cpu: "250m"     
+              cpu: "150m"     
             limits:
               memory: "1Gi" 
-              cpu: "500m"     
+              cpu: "250m"     
           ports:
             - containerPort: 8083
           env:
@@ -227,6 +237,11 @@ spec:
     spec:
       nodeSelector:
         agentpool: worker
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "app"
+          effect: "NoSchedule"
       containers:
         - name: angular-app
           image: hamzakalech/my-angular-app:3.0
@@ -236,10 +251,10 @@ spec:
           resources:
             requests:
               memory: "256Mi"
-              cpu: "500m"
+              cpu: "150m"
             limits:
               memory: "500Mi"
-              cpu: "900m"
+              cpu: "250m"
           livenessProbe:
             httpGet:
               path: /

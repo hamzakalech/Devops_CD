@@ -88,33 +88,33 @@ module "monitoring" {
 }
 
 # automated daily snapshots with 15-day retention for your MySQL PVC disk
-module "velero" {
-  source = "./modules/velero"
-
-  resource_group_name         = module.resource_group.name
-  location                    = module.resource_group.location
-
-  kube_host                   = module.aks.kube_config_host
-  kube_client_certificate     = module.aks.kube_config_client_certificate
-  kube_client_key             = module.aks.kube_config_client_key
-  kube_cluster_ca_certificate = module.aks.kube_config_cluster_ca_certificate
-  kube_config_ready           = null_resource.update_kubeconfig
-  
-  cluster_name                = var.cluster_name
-
-  providers = {
-    azurerm    = azurerm
-    helm       = helm
-    kubernetes = kubernetes
-  }
-}
+#module "velero" {
+#  source = "./modules/velero"
+#
+#  resource_group_name         = module.resource_group.name
+#  location                    = module.resource_group.location
+#
+#  kube_host                   = module.aks.kube_config_host
+#  kube_client_certificate     = module.aks.kube_config_client_certificate
+#  kube_client_key             = module.aks.kube_config_client_key
+#  kube_cluster_ca_certificate = module.aks.kube_config_cluster_ca_certificate
+#  kube_config_ready           = null_resource.update_kubeconfig
+#  
+#  cluster_name                = var.cluster_name
+#
+#  providers = {
+#    azurerm    = azurerm
+#    helm       = helm
+#    kubernetes = kubernetes
+#  }
+#}
 
 
 resource "null_resource" "bootstrap" {
   depends_on = [
     null_resource.update_kubeconfig,
     module.monitoring,
-    module.velero
+   # module.velero
   ]
 
   provisioner "local-exec" {
@@ -123,11 +123,11 @@ resource "null_resource" "bootstrap" {
 # Create namespace if not exists
 kubectl apply -f modules/bootstrap/namespace.yaml
 # Apply Jenkins RBAC
-kubectl apply -f modules/bootstrap/jenkins-serviceaccount.yaml
-kubectl apply -f modules/bootstrap/jenkins-role.yaml
-kubectl apply -f modules/bootstrap/jenkins-rolebinding.yaml
-kubectl apply -f modules/bootstrap/jenkins-clusterrole.yaml
-kubectl apply -f modules/bootstrap/jenkins-clusterrolebinding.yaml
+#kubectl apply -f modules/bootstrap/jenkins-serviceaccount.yaml
+#kubectl apply -f modules/bootstrap/jenkins-role.yaml
+#kubectl apply -f modules/bootstrap/jenkins-rolebinding.yaml
+#kubectl apply -f modules/bootstrap/jenkins-clusterrole.yaml
+#kubectl apply -f modules/bootstrap/jenkins-clusterrolebinding.yaml
 
 # Install Ingress Controller
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
@@ -136,25 +136,23 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 
 # Apply Jenkins Secret
-kubectl apply -f modules/bootstrap/secret.yaml -n hamzadevops
+#kubectl apply -f modules/bootstrap/secret.yaml -n hamzadevops
 EOT
   }
 }
 
-module "argocd" {
-  source     = "./modules/argocd"
+#module "argocd" {
+#  source     = "./modules/argocd"
+#
+#  depends_on = [
+#    module.monitoring,
+#    null_resource.bootstrap 
+#  ]
 
-  depends_on = [
-    module.monitoring,
-    null_resource.bootstrap 
-  ]
+#  providers = {
+#    helm       = helm
+#    kubernetes = kubernetes
+#  }
+#}
+#
 
-  providers = {
-    helm       = helm
-    kubernetes = kubernetes
-  }
-}
-
-module "cluster_autoscaler" {
-  source            = "./modules/cluster_autoscaler"
-}

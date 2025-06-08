@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PrometheusConfig:
     """Configuration for Prometheus data collection"""
-    url: str = "https://prometheus.hamzakalech.com/prometheus"
+    url: str = "https://prometheus.hamzakalech.com"
     namespace: str = "hamzadevops"
     step_seconds: int = 30  # Higher resolution for ML
     days_back: int = 1  # Focus on recent load test data
@@ -46,14 +46,71 @@ class PrometheusCollector:
         self.session = requests.Session()
         self.session.headers.update({'Accept': 'application/json'})
         
+        # First test connectivity
+        self._test_connectivity()
+        
         # Define comprehensive PromQL queries for autoscaling
         self.queries = self._build_queries()
         
+    def _test_connectivity(self):
+        """Test Prometheus connectivity and discover correct endpoints"""
+        logger.info("Testing Prometheus connectivity...")
+        
+        # Test different possible endpoints
+        test_endpoints = [
+            f"{self.config.url}/api/v1/query?query=up",
+            f"{self.config.url}/prometheus/api/v1/query?query=up",
+            f"{self.config.url}/-/healthy",
+            f"{self.config.url}/prometheus/-/healthy",
+            f"{self.config.url}",
+            f"{self.config.url}/prometheus"
+        ]
+        
+        for endpoint in test_endpoints:
+            try:
+                logger.info(f"Testing: {endpoint}")
+                response = self.session.get(
+                    endpoint, 
+                    timeout=10,
+                    verify=self.config.verify_ssl
+                )
+                logger.info(f"  Status: {response.status_code}")
+                if response.status_code == 200:
+                    logger.info(f"  Response: {response.text[:200]}...")
+                    
+                    # If this is a query endpoint and it works, update our config
+                    if 'api/v1/query' in endpoint and response.status_code == 200:
+                        base_url = endpoint.replace('/api/v1/query?query=up', '')
+                        logger.info(f"✅ Found working API endpoint: {base_url}")
+                        self.config.url = base_url
+                        return
+                        
+            except Exception as e:
+                logger.info(f"  Error: {str(e)}")
+        
+        logger.warning("Could not find working API endpoint, using original URL")
+    
     def _build_queries(self) -> Dict[str, str]:
         """Build comprehensive PromQL queries for autoscaling metrics"""
         ns = self.config.namespace
         
-        return {
+        # Start with basic queries that are more likely to work
+        basic_queries = {
+            # Basic metrics that should exist
+            "up_metrics": "up",
+            "prometheus_build_info": "prometheus_build_info",
+            
+            # Node metrics (usually available)
+            "node_load1": "node_load1",
+            "node_memory_available": "node_memory_MemAvailable_bytes",
+            
+            # Try container metrics without namespace first
+            "container_cpu_all": 'rate(container_cpu_usage_seconds_total[2m])',
+            "container_memory_all": 'container_memory_working_set_bytes',
+        }
+        
+        # Extended queries with namespace
+        extended_queries = {
             # === RESOURCE UTILIZATION ===
             "cpu_usage_rate": f'rate(container_cpu_usage_seconds_total{{namespace="{ns}", container!="", container!="POD"}}[2m])',
             "cpu_requests": f'kube_pod_container_resource_requests{{namespace="{ns}", resource="cpu"}}',
@@ -65,8 +122,6 @@ class PrometheusCollector:
             # === NETWORK METRICS ===
             "network_rx_rate": f'rate(container_network_receive_bytes_total{{namespace="{ns}"}}[2m])',
             "network_tx_rate": f'rate(container_network_transmit_bytes_total{{namespace="{ns}"}}[2m])',
-            "network_rx_packets": f'rate(container_network_receive_packets_total{{namespace="{ns}"}}[2m])',
-            "network_tx_packets": f'rate(container_network_transmit_packets_total{{namespace="{ns}"}}[2m])',
             
             # === APPLICATION METRICS ===
             "http_requests_rate": f'rate(http_requests_total{{namespace="{ns}"}}[2m])',
@@ -76,29 +131,72 @@ class PrometheusCollector:
             # === KUBERNETES METRICS ===
             "pod_count_running": f'count(kube_pod_status_phase{{namespace="{ns}", phase="Running"}})',
             "pod_count_pending": f'count(kube_pod_status_phase{{namespace="{ns}", phase="Pending"}})',
-            "pod_restart_rate": f'rate(kube_pod_container_status_restarts_total{{namespace="{ns}"}}[5m])',
             
             # === HPA METRICS ===
             "hpa_current_replicas": f'kube_horizontalpodautoscaler_status_current_replicas{{namespace="{ns}"}}',
             "hpa_desired_replicas": f'kube_horizontalpodautoscaler_status_desired_replicas{{namespace="{ns}"}}',
-            "hpa_target_cpu": f'kube_horizontalpodautoscaler_spec_target_cpu_utilization_percentage{{namespace="{ns}"}}',
-            
-            # === NODE METRICS ===
-            "node_count_ready": 'count(kube_node_status_condition{condition="Ready", status="true", node_label_agentpool="worker"})',
-            "node_cpu_usage": 'rate(node_cpu_seconds_total{mode!="idle", node_label_agentpool="worker"}[2m])',
-            "node_memory_usage": 'node_memory_MemAvailable_bytes{node_label_agentpool="worker"}',
-            "node_load1": 'node_load1{node_label_agentpool="worker"}',
-            "node_load5": 'node_load5{node_label_agentpool="worker"}',
-            
-            # === DISK AND I/O ===
-            "disk_usage": f'container_fs_usage_bytes{{namespace="{ns}", container!="", container!="POD"}}',
-            "disk_io_read": f'rate(container_fs_reads_bytes_total{{namespace="{ns}", container!=""}}[2m])',
-            "disk_io_write": f'rate(container_fs_writes_bytes_total{{namespace="{ns}", container!=""}}[2m])',
-            
-            # === DERIVED METRICS FOR ML ===
-            "cpu_utilization_pct": f'(rate(container_cpu_usage_seconds_total{{namespace="{ns}", container!="", container!="POD"}}[2m]) / on(pod) kube_pod_container_resource_requests{{namespace="{ns}", resource="cpu"}}) * 100',
-            "memory_utilization_pct": f'(container_memory_working_set_bytes{{namespace="{ns}", container!="", container!="POD"}} / on(pod) kube_pod_container_resource_requests{{namespace="{ns}", resource="memory"}}) * 100',
         }
+        
+        # Combine queries - start with basic ones
+        all_queries = {**basic_queries, **extended_queries}
+        return all_queries
+    
+    def test_single_query(self, query: str) -> bool:
+        """Test a single query to see if it works"""
+        url = f"{self.config.url}/api/v1/query"
+        params = {"query": query}
+        
+        try:
+            response = self.session.get(
+                url, 
+                params=params, 
+                timeout=10,
+                verify=self.config.verify_ssl
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('status') == 'success':
+                    result_count = len(data.get('data', {}).get('result', []))
+                    logger.info(f"✅ Query works: {query[:50]}... ({result_count} series)")
+                    return True
+            
+            logger.warning(f"❌ Query failed: {query[:50]}... (Status: {response.status_code})")
+            return False
+            
+        except Exception as e:
+            logger.warning(f"❌ Query error: {query[:50]}... ({str(e)})")
+            return False
+    
+    def discover_available_metrics(self) -> List[str]:
+        """Discover what metrics are actually available"""
+        logger.info("Discovering available metrics...")
+        
+        # Get all metric names
+        try:
+            url = f"{self.config.url}/api/v1/label/__name__/values"
+            response = self.session.get(url, timeout=10, verify=self.config.verify_ssl)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('status') == 'success':
+                    metrics = data.get('data', [])
+                    logger.info(f"Found {len(metrics)} available metrics")
+                    
+                    # Show some examples
+                    container_metrics = [m for m in metrics if 'container' in m]
+                    kube_metrics = [m for m in metrics if 'kube' in m]
+                    node_metrics = [m for m in metrics if 'node' in m]
+                    
+                    logger.info(f"Container metrics: {len(container_metrics)} (e.g., {container_metrics[:3]})")
+                    logger.info(f"Kubernetes metrics: {len(kube_metrics)} (e.g., {kube_metrics[:3]})")
+                    logger.info(f"Node metrics: {len(node_metrics)} (e.g., {node_metrics[:3]})")
+                    
+                    return metrics
+        except Exception as e:
+            logger.error(f"Failed to discover metrics: {str(e)}")
+        
+        return []
     
     def query_prometheus(self, query: str, start_time: int, end_time: int) -> Optional[Dict]:
         """Query Prometheus with retry logic"""
@@ -120,12 +218,17 @@ class PrometheusCollector:
                     verify=self.config.verify_ssl
                 )
                 
+                logger.info(f"Response status: {response.status_code}")
+                
                 if response.status_code == 200:
                     data = response.json()
                     if data.get('status') == 'success':
+                        result_count = len(data.get('data', {}).get('result', []))
+                        logger.info(f"✅ Success: {result_count} time series returned")
                         return data
                     else:
-                        logger.error(f"Prometheus error: {data.get('error', 'Unknown error')}")
+                        error_msg = data.get('error', 'Unknown error')
+                        logger.error(f"Prometheus error: {error_msg}")
                 else:
                     logger.error(f"HTTP {response.status_code}: {response.text[:200]}")
                     
@@ -162,7 +265,7 @@ class PrometheusCollector:
                     row = {
                         'timestamp': timestamp,
                         metric_name: value,
-                        **{f"{metric_name}_{k}": v for k, v in labels.items()}
+                        **{f"{metric_name}_{k}": v for k, v in labels.items() if k != '__name__'}
                     }
                     all_data.append(row)
                 except (ValueError, TypeError) as e:
@@ -176,8 +279,8 @@ class PrometheusCollector:
         
         # Aggregate by timestamp if multiple series
         if len(results) > 1:
-            numeric_cols = [col for col in df.columns if col.startswith(metric_name) and not col.endswith('_' + col.split('_')[-1])]
-            if numeric_cols:
+            numeric_cols = [metric_name]
+            if len(df) > 0:
                 agg_funcs = {col: aggregation for col in numeric_cols}
                 df = df.groupby('timestamp').agg(agg_funcs).reset_index()
         
@@ -192,11 +295,28 @@ class PrometheusCollector:
         logger.info(f"Collecting metrics from {start_time} to {end_time}")
         logger.info(f"Time range: {start_unix} to {end_unix} (step: {self.config.step_seconds}s)")
         
+        # First discover available metrics
+        available_metrics = self.discover_available_metrics()
+        
+        # Test a few basic queries first
+        logger.info("Testing basic queries...")
+        working_queries = {}
+        
+        for metric_name, query in list(self.queries.items())[:5]:  # Test first 5 queries
+            if self.test_single_query(query):
+                working_queries[metric_name] = query
+        
+        if not working_queries:
+            logger.error("No working queries found! Check Prometheus connectivity.")
+            return pd.DataFrame()
+        
+        logger.info(f"Found {len(working_queries)} working queries, proceeding with data collection...")
+        
         # Collect all metrics
         dataframes = []
         failed_queries = []
         
-        for metric_name, query in self.queries.items():
+        for metric_name, query in working_queries.items():
             logger.info(f"Processing metric: {metric_name}")
             
             prom_data = self.query_prometheus(query, start_unix, end_unix)
@@ -229,7 +349,7 @@ class PrometheusCollector:
         merged_df = merged_df.sort_values('timestamp').reset_index(drop=True)
         
         # Forward fill missing values (common in time series)
-        merged_df = merged_df.fillna(method='forward').fillna(method='backward')
+        merged_df = merged_df.fillna(method='ffill').fillna(method='bfill')
         
         logger.info(f"✅ Merged dataset: {len(merged_df)} rows × {len(merged_df.columns)} columns")
         return merged_df
@@ -247,29 +367,23 @@ class PrometheusCollector:
         df['is_weekend'] = df['day_of_week'].isin([5, 6]).astype(int)
         
         # Rolling averages (5 minute, 15 minute, 1 hour windows)
-        for col in df.select_dtypes(include=[np.number]).columns:
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        for col in numeric_cols:
             if col not in ['hour', 'day_of_week', 'is_weekend']:
                 for window in [10, 30, 120]:  # 5min, 15min, 1hr at 30s intervals
-                    df[f'{col}_rolling_{window}'] = df[col].rolling(window=window, min_periods=1).mean()
+                    try:
+                        df[f'{col}_rolling_{window}'] = df[col].rolling(window=window, min_periods=1).mean()
+                    except Exception as e:
+                        logger.warning(f"Could not create rolling feature for {col}: {e}")
         
         # Rate of change features
-        numeric_cols = df.select_dtypes(include=[np.number]).columns
-        for col in ['cpu_usage_rate', 'memory_usage', 'http_requests_rate', 'pod_count_running']:
-            if col in numeric_cols:
-                df[f'{col}_rate_of_change'] = df[col].diff()
-                df[f'{col}_rate_of_change_pct'] = df[col].pct_change() * 100
-        
-        # Load indicators
-        if 'http_requests_rate' in df.columns and 'pod_count_running' in df.columns:
-            df['requests_per_pod'] = df['http_requests_rate'] / df['pod_count_running'].replace(0, 1)
-        
-        if 'cpu_usage_rate' in df.columns and 'pod_count_running' in df.columns:
-            df['cpu_per_pod'] = df['cpu_usage_rate'] / df['pod_count_running'].replace(0, 1)
-        
-        # HPA efficiency metrics
-        if all(col in df.columns for col in ['hpa_current_replicas', 'hpa_desired_replicas']):
-            df['hpa_replica_gap'] = df['hpa_desired_replicas'] - df['hpa_current_replicas']
-            df['hpa_scaling_pressure'] = (df['hpa_replica_gap'] != 0).astype(int)
+        for col in numeric_cols:
+            if col not in ['hour', 'day_of_week', 'is_weekend'] and not col.endswith('_rolling_10') and not col.endswith('_rolling_30') and not col.endswith('_rolling_120'):
+                try:
+                    df[f'{col}_rate_of_change'] = df[col].diff()
+                    df[f'{col}_rate_of_change_pct'] = df[col].pct_change() * 100
+                except Exception as e:
+                    logger.warning(f"Could not create rate of change for {col}: {e}")
         
         logger.info(f"✅ Added derived features: {len(df.columns)} total columns")
         return df
@@ -291,9 +405,13 @@ class PrometheusCollector:
         logger.info(f"✅ Saved CSV: {csv_file}")
         
         # Save as Parquet (better for ML workflows)
-        parquet_file = f"ml_data/{base_filename}_{timestamp}.parquet"
-        df.to_parquet(parquet_file, index=False)
-        logger.info(f"✅ Saved Parquet: {parquet_file}")
+        try:
+            parquet_file = f"ml_data/{base_filename}_{timestamp}.parquet"
+            df.to_parquet(parquet_file, index=False)
+            logger.info(f"✅ Saved Parquet: {parquet_file}")
+        except Exception as e:
+            logger.warning(f"Could not save Parquet file: {e}")
+            parquet_file = None
         
         # Save metadata
         metadata = {
@@ -354,7 +472,7 @@ def main():
         namespace="hamzadevops",
         step_seconds=30,  # 30-second resolution for detailed ML training
         days_back=1,  # Collect last 24 hours (adjust based on your load test duration)
-        verify_ssl=True
+        verify_ssl=False  # Try without SSL verification first
     )
     
     # Calculate time range

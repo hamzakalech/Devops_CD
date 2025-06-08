@@ -43,4 +43,6 @@ resource "azurerm_kubernetes_cluster_node_pool" "worker" {
   enable_auto_scaling   = true
   min_count             = 1
   max_count             = 6
+
+  node_taints           = ["dedicated=app:NoSchedule"]
 }
