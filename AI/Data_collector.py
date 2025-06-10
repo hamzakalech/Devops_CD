@@ -128,10 +128,11 @@ class PrometheusCollector:
             "http_request_duration": f'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{{namespace="{ns}"}}[2m]))',
             "error_rate": f'rate(http_requests_total{{namespace="{ns}", status=~"5.."}}[2m])',
             
-            # === KUBERNETES METRICS ===
+            # === KUBERNETES METRICS (MODIFIED) ===
             "pod_count_running": f'count(kube_pod_status_phase{{namespace="{ns}", phase="Running"}})',
             "pod_count_pending": f'count(kube_pod_status_phase{{namespace="{ns}", phase="Pending"}})',
-            
+            "worker_nodes_count": 'count(kube_node_role{role="worker"})', # <-- ADD THIS LINE
+
             # === HPA METRICS ===
             "hpa_current_replicas": f'kube_horizontalpodautoscaler_status_current_replicas{{namespace="{ns}"}}',
             "hpa_desired_replicas": f'kube_horizontalpodautoscaler_status_desired_replicas{{namespace="{ns}"}}',
@@ -140,6 +141,7 @@ class PrometheusCollector:
         # Combine queries - start with basic ones
         all_queries = {**basic_queries, **extended_queries}
         return all_queries
+   
     
     def test_single_query(self, query: str) -> bool:
         """Test a single query to see if it works"""
@@ -302,7 +304,7 @@ class PrometheusCollector:
         logger.info("Testing basic queries...")
         working_queries = {}
         
-        for metric_name, query in list(self.queries.items())[:5]:  # Test first 5 queries
+        for metric_name, query in self.queries.items():
             if self.test_single_query(query):
                 working_queries[metric_name] = query
         
