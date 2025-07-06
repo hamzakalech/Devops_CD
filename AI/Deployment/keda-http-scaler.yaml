@@ -89,55 +89,55 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8000"
         prometheus.io/path: "/prometheus-metrics"
-    spec:
-initContainers:
-      - name: copy-model
-        image: your-registry/pod-predictor:latest
-        command: ["/bin/sh", "-c"]
-        args:
+spec:
+  initContainers:
+  - name: copy-model
+  image: hamzakalech/pod-predictor:latest
+  command: ["/bin/sh", "-c"]
+  args:
           - "cp /app/pod_predictor.pkl /model/pod_predictor.pkl"
-        volumeMounts:
+  volumeMounts:
         - name: model-volume
-          mountPath: /model
-      containers:
-      - name: pod-predictor
-        image: hamzakalech/pod-predictor:latest
-        ports:
+    mountPath: /model
+  containers:
+  - name: pod-predictor
+  image: hamzakalech/pod-predictor:latest
+  ports:
         - containerPort: 8000
-          name: http
-        envFrom:
+    name: http
+  envFrom:
         - configMapRef:
-            name: pod-predictor-config
-        resources:
-          requests:
+    name: pod-predictor-config
+  resources:
+    requests:
             memory: "512Mi"
             cpu: "250m"
-          limits:
+    limits:
             memory: "1Gi"
             cpu: "500m"
-        livenessProbe:
+  livenessProbe:
           httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
-        readinessProbe:
+    path: /health
+    port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readinessProbe:
           httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 2
-        volumeMounts:
+    path: /health
+    port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 2
+  volumeMounts:
         - name: model-volume
-          mountPath: /app/model
-      volumes:
+    mountPath: /app/model
+  volumes:
       - name: model-volume
         emptyDir: {}
-      imagePullPolicy: Always
+  imagePullPolicy: Always
 ---
 # Service remains the same
 apiVersion: v1
