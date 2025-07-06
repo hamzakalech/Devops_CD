@@ -4,7 +4,7 @@
 set -e
 
 # Configuration - UPDATE THESE VALUES
-REGISTRY="your-registry.com"  # Replace with your Docker registry
+REGISTRY="hamzakalech"
 IMAGE_NAME="pod-predictor"
 TAG="latest"
 
