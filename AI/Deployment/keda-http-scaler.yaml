@@ -68,7 +68,7 @@ data:
   MODEL_PATH: "/app/model/pod_predictor.pkl"
   PORT: "8000"
 ---
-# Updated deployment with Prometheus integration
+# deployment with Prometheus integration
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -77,7 +77,7 @@ metadata:
   labels:
     app: pod-predictor
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: pod-predictor
@@ -89,55 +89,55 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8000"
         prometheus.io/path: "/prometheus-metrics"
-spec:
-  initContainers:
-  - name: copy-model
-  image: hamzakalech/pod-predictor:latest
-  command: ["/bin/sh", "-c"]
-  args:
-          - "cp /app/pod_predictor.pkl /model/pod_predictor.pkl"
-  volumeMounts:
+    spec:
+      initContainers:
+        - name: copy-model
+          image: hamzakalech/pod-predictor:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - "cp /app/pod_predictor.pkl /model/pod_predictor.pkl"
+          volumeMounts:
+            - name: model-volume
+              mountPath: /model
+      containers:
+        - name: pod-predictor
+          image: hamzakalech/pod-predictor:latest
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: pod-predictor-config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 2
+          volumeMounts:
+            - name: model-volume
+              mountPath: /app/model
+      volumes:
         - name: model-volume
-    mountPath: /model
-  containers:
-  - name: pod-predictor
-  image: hamzakalech/pod-predictor:latest
-  ports:
-        - containerPort: 8000
-    name: http
-  envFrom:
-        - configMapRef:
-    name: pod-predictor-config
-  resources:
-    requests:
-            memory: "512Mi"
-            cpu: "250m"
-    limits:
-            memory: "1Gi"
-            cpu: "500m"
-  livenessProbe:
-          httpGet:
-    path: /health
-    port: 8000
-    initialDelaySeconds: 30
-    periodSeconds: 30
-    timeoutSeconds: 10
-    failureThreshold: 3
-  readinessProbe:
-          httpGet:
-    path: /health
-    port: 8000
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 2
-  volumeMounts:
-        - name: model-volume
-    mountPath: /app/model
-  volumes:
-      - name: model-volume
-        emptyDir: {}
-  imagePullPolicy: Always
+          emptyDir: {}
+
 ---
 # Service remains the same
 apiVersion: v1

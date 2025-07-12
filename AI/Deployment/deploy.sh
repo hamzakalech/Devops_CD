@@ -8,7 +8,7 @@ echo "🚀 Deploying to Kubernetes..."
 # Check if KEDA is installed
 if ! kubectl get crd scaledobjects.keda.sh &> /dev/null; then
     echo "📥 Installing KEDA..."
-    kubectl apply -f https://github.com/kedacore/keda/releases/download/v2.12.0/keda-2.12.0.yaml
+    kubectl apply -f keda-clean.yaml
     
     echo "⏳ Waiting for KEDA to be ready..."
     kubectl wait --for=condition=ready pod -l app=keda-operator -n keda --timeout=300s
@@ -20,16 +20,7 @@ fi
 kubectl create namespace default --dry-run=client -o yaml | kubectl apply -f -
 
 # Prepare your model file
-echo "📊 Preparing model file..."
-if [ -f "pod_predictor.pkl" ]; then
-    echo "✅ Found pod_predictor.pkl, creating ConfigMap..."
-    kubectl create configmap pod-predictor-model --from-file=pod_predictor.pkl --dry-run=client -o yaml | kubectl apply -f -
-else
-    echo "⚠️  Warning: pod_predictor.pkl not found!"
-    echo "Please ensure your model file is in the current directory"
-    echo "Creating empty ConfigMap for now..."
-    kubectl create configmap pod-predictor-model --from-literal=dummy=placeholder --dry-run=client -o yaml | kubectl apply -f -
-fi
+echo "📊 Skipping model ConfigMap — using initContainer instead."
 
 # Deploy the application
 echo "🚢 Deploying FastAPI application..."
