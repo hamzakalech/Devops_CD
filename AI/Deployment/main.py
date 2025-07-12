@@ -31,8 +31,8 @@ model_confidence = Gauge('model_confidence', 'Model prediction confidence', regi
 # Global variables
 model = None
 prometheus_url = os.getenv("PROMETHEUS_URL", "http://prometheus-server.monitoring.svc.cluster.local:80")
-target_namespace = os.getenv("TARGET_NAMESPACE", "default")
-target_deployment = os.getenv("TARGET_DEPLOYMENT", "your-workload")
+target_namespace = os.getenv("TARGET_NAMESPACE", "hamzadevops")
+target_deployment = os.getenv("TARGET_DEPLOYMENT", "eventmanagement")
 
 class PrometheusMetrics(BaseModel):
     cpu_usage: float

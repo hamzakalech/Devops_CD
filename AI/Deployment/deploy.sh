@@ -9,7 +9,7 @@ echo "🚀 Deploying to Kubernetes..."
 if ! kubectl get crd scaledobjects.keda.sh &> /dev/null; then
     echo "📥 Installing KEDA..."
     kubectl apply -f keda-clean.yaml
-    
+
     echo "⏳ Waiting for KEDA to be ready..."
     kubectl wait --for=condition=ready pod -l app=keda-operator -n keda --timeout=300s
 else

@@ -3,7 +3,7 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: ml-predictor-scaler
-  namespace: default
+  namespace: hamzadevops
 spec:
   scaleTargetRef:
     name: eventmanagement  # workload deployment name
@@ -15,7 +15,7 @@ spec:
   - type: metrics-api
     metadata:
       targetValue: "1"
-      url: "http://pod-predictor-service.default.svc.cluster.local/keda-metric"
+      url: "http://pod-predictor-service.hamzadevops.svc.cluster.local/keda-metric"
       valueLocation: "metric_value"
       method: "GET"
 #---
@@ -42,7 +42,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: pod-predictor-metrics
-  namespace: default
+  namespace: hamzadevops
   labels:
     app: pod-predictor
 spec:
@@ -60,7 +60,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pod-predictor-config
-  namespace: default
+  namespace: hamzadevops
 data:
   PROMETHEUS_URL: "http://prometheus-server.monitoring.svc.cluster.local:80"
   TARGET_NAMESPACE: "hamzadevops"
@@ -73,7 +73,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pod-predictor
-  namespace: default
+  namespace: hamzadevops
   labels:
     app: pod-predictor
 spec:
@@ -144,7 +144,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pod-predictor-service
-  namespace: default
+  namespace: hamzadevops
   labels:
     app: pod-predictor
 spec:
