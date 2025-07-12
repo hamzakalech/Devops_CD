@@ -10,30 +10,49 @@ import os
 import httpx
 import asyncio
 from prometheus_client import CollectorRegistry, Gauge, Counter, generate_latest
-import time
+import json
 
-# Configure logging
+# ---------------------------------------------------
+# Logging configuration
+# ---------------------------------------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------
+# FastAPI application
+# ---------------------------------------------------
 app = FastAPI(
     title="Kubernetes Pod Autoscaling Predictor with Prometheus Integration",
     description="API that pulls metrics from Prometheus, makes predictions, and provides scaling decisions to KEDA",
-    version="1.0.0"
+    version="1.1.0"  # bumped
 )
 
-# Prometheus client for exposing metrics
+# ---------------------------------------------------
+# Prometheus custom metrics
+# ---------------------------------------------------
 registry = CollectorRegistry()
 prediction_counter = Counter('prediction_requests_total', 'Total prediction requests', registry=registry)
 prediction_gauge = Gauge('predicted_pod_count', 'Currently predicted pod count', registry=registry)
-model_confidence = Gauge('model_confidence', 'Model prediction confidence', registry=registry)
+model_confidence_gauge = Gauge('model_confidence', 'Model prediction confidence', registry=registry)
 
-# Global variables
-model = None
-prometheus_url = os.getenv("PROMETHEUS_URL", "http://prometheus-server.monitoring.svc.cluster.local:80")
-target_namespace = os.getenv("TARGET_NAMESPACE", "hamzadevops")
-target_deployment = os.getenv("TARGET_DEPLOYMENT", "eventmanagement")
+# ---------------------------------------------------
+# Environment configuration
+# ---------------------------------------------------
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus-server.monitoring.svc.cluster.local:80")
+TARGET_NAMESPACE = os.getenv("TARGET_NAMESPACE", "hamzadevops")
+TARGET_DEPLOYMENT = os.getenv("TARGET_DEPLOYMENT", "eventmanagement")
+MODEL_PATH = os.getenv("MODEL_PATH", "/app/model/pod_predictor.pkl")
+MODEL_METADATA_PATH = os.getenv("MODEL_METADATA_PATH", "/app/model/metadata.json")
 
+# ---------------------------------------------------
+# Global runtime objects
+# ---------------------------------------------------
+model = None  # ML model loaded at startup
+expected_feature_names: List[str] = []  # order expected by the model
+
+# ---------------------------------------------------
+# Pydantic models (schema)
+# ---------------------------------------------------
 class PrometheusMetrics(BaseModel):
     cpu_usage: float
     memory_usage: float
@@ -53,222 +72,240 @@ class KEDAMetricResponse(BaseModel):
     metric_value: int
     timestamp: str
 
+# ---------------------------------------------------
+# Prometheus HTTP client helper
+# ---------------------------------------------------
 class PrometheusClient:
     def __init__(self, prometheus_url: str):
         self.prometheus_url = prometheus_url
         self.client = httpx.AsyncClient(timeout=10.0)
-    
+
     async def query_metric(self, query: str) -> float:
         """Query a single metric from Prometheus"""
         try:
-            response = await self.client.get(
-                f"{self.prometheus_url}/api/v1/query",
-                params={"query": query}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data["status"] == "success" and data["data"]["result"]:
-                    return float(data["data"]["result"][0]["value"][1])
-            return 0.0
-        except Exception as e:
-            logger.error(f"Failed to query Prometheus metric '{query}': {e}")
-            return 0.0
-    
+            response = await self.client.get(f"{self.prometheus_url}/api/v1/query", params={"query": query})
+            response.raise_for_status()
+            data = response.json()
+            if data.get("status") == "success" and data["data"]["result"]:
+                return float(data["data"]["result"][0]["value"][1])
+        except Exception as ex:
+            logger.error(f"Prometheus query failed for '{query}': {ex}")
+        return 0.0  # graceful fallback
+
     async def get_workload_metrics(self) -> PrometheusMetrics:
-        """Get all relevant metrics for the target workload"""
-        
-        # Define Prometheus queries for your workload
+        """Collect all base metrics we know how to compute in real‑time"""
         queries = {
-            "cpu_usage": f'avg(rate(container_cpu_usage_seconds_total{{namespace="{target_namespace}", pod=~"{target_deployment}.*"}}[5m])) * 100',
-            "memory_usage": f'avg(container_memory_working_set_bytes{{namespace="{target_namespace}", pod=~"{target_deployment}.*"}}) / 1024 / 1024',
-            "request_rate": f'sum(rate(http_requests_total{{namespace="{target_namespace}", pod=~"{target_deployment}.*"}}[5m]))',
-            "queue_length": f'avg(queue_size{{namespace="{target_namespace}", job="{target_deployment}"}})',
-            "response_time": f'avg(http_request_duration_seconds{{namespace="{target_namespace}", pod=~"{target_deployment}.*"}})',
-            "active_connections": f'sum(active_connections{{namespace="{target_namespace}", pod=~"{target_deployment}.*"}})'
+            "cpu_usage": f'avg(rate(container_cpu_usage_seconds_total{{namespace="{TARGET_NAMESPACE}", pod=~"{TARGET_DEPLOYMENT}.*"}}[5m])) * 100',
+            "memory_usage": f'avg(container_memory_working_set_bytes{{namespace="{TARGET_NAMESPACE}", pod=~"{TARGET_DEPLOYMENT}.*"}}) / 1024 / 1024',
+            "request_rate": f'sum(rate(http_requests_total{{namespace="{TARGET_NAMESPACE}", pod=~"{TARGET_DEPLOYMENT}.*"}}[5m]))',
+            "queue_length": f'avg(queue_size{{namespace="{TARGET_NAMESPACE}", job="{TARGET_DEPLOYMENT}"}})',
+            "response_time": f'avg(http_request_duration_seconds{{namespace="{TARGET_NAMESPACE}", pod=~"{TARGET_DEPLOYMENT}.*"}})',
+            "active_connections": f'sum(active_connections{{namespace="{TARGET_NAMESPACE}", pod=~"{TARGET_DEPLOYMENT}.*"}})'
         }
-        
-        # Execute all queries concurrently
-        tasks = [self.query_metric(query) for query in queries.values()]
+        tasks = [self.query_metric(q) for q in queries.values()]
         results = await asyncio.gather(*tasks)
-        
-        return PrometheusMetrics(
-            cpu_usage=results[0],
-            memory_usage=results[1],
-            request_rate=results[2],
-            queue_length=results[3],
-            response_time=results[4],
-            active_connections=results[5]
-        )
+        return PrometheusMetrics(**dict(zip(queries.keys(), results)))
 
-# Initialize Prometheus client
-prometheus_client = PrometheusClient(prometheus_url)
+# initialise singleton Prometheus client
+prom_client = PrometheusClient(PROMETHEUS_URL)
 
-def load_model():
-    """Load the trained model from file"""
-    global model
+# ---------------------------------------------------
+# Model / feature helpers
+# ---------------------------------------------------
+
+def _load_feature_names_from_metadata(path: str) -> List[str]:
+    """Attempt to read feature name order from a metadata json produced during training."""
+    if not os.path.isfile(path):
+        return []
     try:
-        model_path = os.getenv("MODEL_PATH", "/app/model/pod_predictor.pkl")
-        model = joblib.load(model_path)
-        logger.info(f"Model loaded successfully from {model_path}")
+        with open(path, "r") as f:
+            meta = json.load(f)
+        return meta.get("selected_features", []) or meta.get("feature_names", [])
+    except Exception as ex:
+        logger.warning(f"Could not read metadata file {path}: {ex}")
+        return []
+
+def load_model_and_features() -> bool:
+    """Load the ML model and capture expected feature names."""
+    global model, expected_feature_names
+    try:
+        model = joblib.load(MODEL_PATH)
+        logger.info(f"✅ Model loaded from {MODEL_PATH}")
+
+        # 1) Try to read explicit feature list from metadata file
+        expected_feature_names = _load_feature_names_from_metadata(MODEL_METADATA_PATH)
+
+        # 2) Fallback to introspection (scikit‑learn 1.0+ models expose n_features_in_)
+        if not expected_feature_names:
+            num_features = getattr(model, "n_features_in_", None)
+            if num_features is not None:
+                expected_feature_names = [f"f_{i}" for i in range(num_features)]
+                logger.warning("Using synthetic feature names – order may be incorrect.")
+
+        if not expected_feature_names:
+            raise ValueError("Could not determine expected feature names for the model – prediction will fail.")
+
+        logger.info(f"Model expects {len(expected_feature_names)} features.")
         return True
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
+    except Exception as ex:
+        logger.error(f"❌ Failed to load model: {ex}")
+        model = None
         return False
 
-@app.on_event("startup")
-async def startup_event():
-    """Load model on startup"""
-    if not load_model():
-        logger.warning("Model not loaded. API will return errors for predictions.")
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    # Test Prometheus connectivity
-    try:
-        await prometheus_client.query_metric("up")
-        prometheus_healthy = True
-    except:
-        prometheus_healthy = False
-    
-    return {
-        "status": "healthy" if model is not None else "unhealthy",
-        "model_loaded": model is not None,
-        "prometheus_connected": prometheus_healthy,
-        "timestamp": datetime.now().isoformat()
+def build_feature_vector(metrics: PrometheusMetrics) -> np.ndarray:
+    """Create a numpy feature vector in the exact order the model expects.
+
+    Any engineered features not available at prediction time are filled with 0.
+    The six real‑time metrics are mapped when their names are present in the
+    expected feature list (e.g. 'cpu_usage').
+    """
+    global expected_feature_names
+
+    # Map base metrics to names
+    base = {
+        "cpu_usage": metrics.cpu_usage,
+        "memory_usage": metrics.memory_usage,
+        "request_rate": metrics.request_rate,
+        "queue_length": metrics.queue_length,
+        "response_time": metrics.response_time,
+        "active_connections": metrics.active_connections,
+        # a couple of simple engineered metrics we *can* compute on‑the‑fly
+        "cpu_memory_ratio": metrics.cpu_usage / (metrics.memory_usage + 1e-6),
+        "network_total": metrics.request_rate  # placeholder – better than 0
     }
 
+    # Build feature vector
+    vec = np.zeros(len(expected_feature_names), dtype=float)
+    for idx, fname in enumerate(expected_feature_names):
+        if fname in base:
+            vec[idx] = base[fname]
+        # else leave as 0 (unknown engineered feature)
+    return vec.reshape(1, -1)
+
+# ---------------------------------------------------
+# Lifespan events
+# ---------------------------------------------------
+@app.on_event("startup")
+async def _startup() -> None:
+    if not load_model_and_features():
+        logger.error("Model or features could not be loaded – /predict endpoints will return 503.")
+
+@app.on_event("startup")
+async def _background_prediction_loop() -> None:
+    """Continuously call prediction every 30 s so Prometheus/KEDA have fresh data."""
+    async def _runner():
+        while True:
+            try:
+                if model is not None:
+                    await predict_from_prometheus()
+            except Exception as ex:
+                logger.error(f"Background prediction error: {ex}")
+            await asyncio.sleep(30)
+
+    asyncio.create_task(_runner())
+
+# ---------------------------------------------------
+# Utility endpoints
+# ---------------------------------------------------
+@app.get("/health")
+async def health_check():
+    """Health check combining model + Prometheus connectivity"""
+    prom_ok = False
+    try:
+        await prom_client.query_metric("up")
+        prom_ok = True
+    except Exception:
+        pass
+
+    return {
+        "status": "healthy" if (model and prom_ok) else "unhealthy",
+        "model_loaded": model is not None,
+        "prometheus_connected": prom_ok,
+        "expected_features": len(expected_feature_names),
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+# ---------------------------------------------------
+# Core prediction endpoints
+# ---------------------------------------------------
 @app.get("/predict-from-prometheus", response_model=PredictionResponse)
 async def predict_from_prometheus():
-    """Main endpoint: Get metrics from Prometheus and make prediction"""
-    if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
+    if model is None or not expected_feature_names:
+        raise HTTPException(status_code=503, detail="Model not loaded or feature names unavailable")
+
+    metrics = await prom_client.get_workload_metrics()
+    feature_vector = build_feature_vector(metrics)
+
     try:
-        # Get metrics from Prometheus
-        metrics = await prometheus_client.get_workload_metrics()
-        
-        # Prepare features for model
-        features = np.array([
-            metrics.cpu_usage,
-            metrics.memory_usage,
-            metrics.request_rate,
-            metrics.queue_length,
-            metrics.response_time,
-            metrics.active_connections
-        ]).reshape(1, -1)
-        
-        # Make prediction
-        prediction = model.predict(features)[0]
-        
-        # Get confidence if available
-        confidence = 0.95
-        if hasattr(model, 'predict_proba'):
-            try:
-                proba = model.predict_proba(features)[0]
-                confidence = max(proba)
-            except:
-                pass
-        
-        # Ensure prediction is a positive integer
-        predicted_pod_count = max(1, int(round(prediction)))
-        
-        # Update Prometheus metrics
-        prediction_counter.inc()
-        prediction_gauge.set(predicted_pod_count)
-        model_confidence.set(confidence)
-        
-        logger.info(f"Prediction: {predicted_pod_count} pods (confidence: {confidence:.2f})")
-        
-        return PredictionResponse(
-            predicted_pod_count=predicted_pod_count,
-            confidence=confidence,
-            timestamp=datetime.now().isoformat(),
-            metrics_used=metrics,
-            model_version="1.0.0"
-        )
-        
-    except Exception as e:
-        logger.error(f"Prediction error: {e}")
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+        raw_pred = model.predict(feature_vector)[0]
+    except ValueError as ex:
+        # Feature mismatch – expose details for easier debugging
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {ex}")
+
+    # Confidence – best effort
+    confidence = 0.95
+    if hasattr(model, 'predict_proba'):
+        try:
+            confidence = float(np.max(model.predict_proba(feature_vector)))
+        except Exception:
+            pass
+
+    pods = max(1, int(round(raw_pred)))
+
+    # Update custom Prometheus metrics
+    prediction_counter.inc()
+    prediction_gauge.set(pods)
+    model_confidence_gauge.set(confidence)
+
+    logger.info(f"🔮 Predicted {pods} pods (confidence {confidence:.2f})")
+
+    return PredictionResponse(
+        predicted_pod_count=pods,
+        confidence=confidence,
+        timestamp=datetime.utcnow().isoformat(),
+        metrics_used=metrics,
+        model_version="1.1.0"
+    )
 
 @app.get("/keda-metric", response_model=KEDAMetricResponse)
 async def keda_metric():
-    """Endpoint for KEDA to get the scaling metric"""
     try:
-        # Get prediction
-        prediction_response = await predict_from_prometheus()
-        
-        return KEDAMetricResponse(
-            metric_value=prediction_response.predicted_pod_count,
-            timestamp=prediction_response.timestamp
-        )
-        
-    except Exception as e:
-        logger.error(f"KEDA metric error: {e}")
-        # Return safe default
-        return KEDAMetricResponse(
-            metric_value=1,
-            timestamp=datetime.now().isoformat()
-        )
+        prediction = await predict_from_prometheus()
+        return KEDAMetricResponse(metric_value=prediction.predicted_pod_count, timestamp=prediction.timestamp)
+    except HTTPException as http_ex:
+        logger.error(f"KEDA metric endpoint failed: {http_ex.detail}")
+        # Safe fallback: 1 replica
+        return KEDAMetricResponse(metric_value=1, timestamp=datetime.utcnow().isoformat())
 
+# ---------------------------------------------------
+# Misc endpoints
+# ---------------------------------------------------
 @app.get("/prometheus-metrics")
-async def get_prometheus_metrics():
-    """Endpoint to expose metrics to Prometheus"""
-    return generate_latest(registry).decode('utf-8')
+async def prometheus_metrics():
+    return generate_latest(registry).decode()
 
 @app.get("/current-metrics")
-async def get_current_metrics():
-    """Get current metrics without prediction (for debugging)"""
-    try:
-        metrics = await prometheus_client.get_workload_metrics()
-        return {
-            "metrics": metrics.dict(),
-            "timestamp": datetime.now().isoformat()
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
-
-# Background task to continuously update predictions
-async def continuous_prediction_task():
-    """Background task that runs predictions every 30 seconds"""
-    while True:
-        try:
-            if model is not None:
-                await predict_from_prometheus()
-            await asyncio.sleep(30)  # Update every 30 seconds
-        except Exception as e:
-            logger.error(f"Background prediction error: {e}")
-            await asyncio.sleep(30)
-
-@app.on_event("startup")
-async def start_background_tasks():
-    """Start background tasks"""
-    asyncio.create_task(continuous_prediction_task())
+async def current_metrics():
+    metrics = await prom_client.get_workload_metrics()
+    return {"metrics": metrics.dict(), "timestamp": datetime.utcnow().isoformat()}
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
     return {
         "message": "Kubernetes Pod Autoscaling Predictor with Prometheus Integration",
-        "version": "1.0.0",
-        "prometheus_url": prometheus_url,
-        "target_namespace": target_namespace,
-        "target_deployment": target_deployment,
-        "endpoints": {
-            "health": "/health",
-            "predict": "/predict-from-prometheus",
-            "keda_metric": "/keda-metric",
-            "current_metrics": "/current-metrics",
-            "prometheus_metrics": "/prometheus-metrics"
-        }
+        "version": "1.1.0",
+        "prometheus_url": PROMETHEUS_URL,
+        "target_namespace": TARGET_NAMESPACE,
+        "target_deployment": TARGET_DEPLOYMENT,
+        "expected_features": len(expected_feature_names),
+        "endpoints": [
+            "/health", "/predict-from-prometheus", "/keda-metric", "/current-metrics", "/prometheus-metrics"
+        ]
     }
 
+# ---------------------------------------------------
+# Uvicorn entrypoint when run as `python main.py`
+# ---------------------------------------------------
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
-        log_level="info"
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), log_level="info")
