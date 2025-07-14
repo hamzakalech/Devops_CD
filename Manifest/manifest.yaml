@@ -165,7 +165,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: eventmanagement
-          image: hamzakalech/event-management:v86
+          image: hamzakalech/event-management:v96
           imagePullPolicy: Always
           resources:
             requests:

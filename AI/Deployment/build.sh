@@ -9,7 +9,7 @@ IMAGE_NAME="pod-predictor"
 TAG="latest"
 
 echo "🔨 Building Docker image..."
-docker build -t ${REGISTRY}/${IMAGE_NAME}:${TAG} .
+docker build -t ${REGISTRY}/${IMAGE_NAME}:${TAG} --no-cache .
 
 echo "🏷️  Tagging image with timestamp..."
 TIMESTAMP_TAG=$(date +%Y%m%d-%H%M%S)

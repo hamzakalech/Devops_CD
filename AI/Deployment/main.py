@@ -38,7 +38,7 @@ model_confidence_gauge = Gauge('model_confidence', 'Model prediction confidence'
 # ---------------------------------------------------
 # Environment configuration
 # ---------------------------------------------------
-PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus-server.monitoring.svc.cluster.local:80")
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090")
 TARGET_NAMESPACE = os.getenv("TARGET_NAMESPACE", "hamzadevops")
 TARGET_DEPLOYMENT = os.getenv("TARGET_DEPLOYMENT", "eventmanagement")
 MODEL_PATH = os.getenv("MODEL_PATH", "/app/model/pod_predictor.pkl")

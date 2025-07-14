@@ -82,3 +82,39 @@ spec:
   policyTypes:
     - Ingress
 
+---
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-and-keda-to-predictor
+  namespace: hamzadevops
+spec:
+  selector: app == 'pod-predictor'
+  types:
+    - Ingress
+  ingress:
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: "projectcalico.org/name in {'monitoring','keda'}"
+      destination:
+        ports:
+          - 8000        # predictor HTTP port
+
+---
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-prometheus
+  namespace: hamzadevops
+spec:
+  selector: all()                 # every pod here
+  types:
+    - Egress
+  egress:
+    - action: Allow
+      protocol: TCP
+      destination:
+        namespaceSelector: "projectcalico.org/name == 'monitoring'"
+        selector: "app.kubernetes.io/name == 'prometheus'"
+        ports: [9090]

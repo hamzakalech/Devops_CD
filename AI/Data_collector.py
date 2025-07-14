@@ -131,7 +131,7 @@ class PrometheusCollector:
             # === KUBERNETES METRICS (MODIFIED) ===
             "pod_count_running": f'count(kube_pod_status_phase{{namespace="{ns}", phase="Running"}})',
             "pod_count_pending": f'count(kube_pod_status_phase{{namespace="{ns}", phase="Pending"}})',
-            "worker_nodes_count": 'count(kube_node_role{role="worker"})', # <-- ADD THIS LINE
+            "worker_nodes_count": 'count(kube_node_labels{label_agentpool="worker"}) or count(kube_node_role{role="worker"}) or count(kube_node_info)',
 
             # === HPA METRICS ===
             "hpa_current_replicas": f'kube_horizontalpodautoscaler_status_current_replicas{{namespace="{ns}"}}',
