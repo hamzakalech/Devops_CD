@@ -20,7 +20,7 @@ configuration:
       provider: azure
       config:
         resourceGroup: MC_hamza-resources_hamzaDevOps_eastus
-        subscriptionId: 6126c082-d56e-4f42-8033-834a1072516c
+        subscriptionId: **
         apiTimeout: 5m
         incremental: true
 
